@@ -1,0 +1,36 @@
+MCE test suite
+---------------
+
+The test suite validate the Linux kernel MCE processing function.
+
+
+Quit Start
+----------
+
+1. Apply patches in doc/mce-patches to Linux kernel source code with
+   quilt.
+
+2. Compile and install patched Linux kernel.
+
+3. Add "fake_panic_on_mce" to Linux kernel command line.
+
+4. Compile tools of test suite with:
+   make
+
+5. Run tests with:
+   make test
+
+6. The results go in results directory. Overall result is in
+   results/result and more results about various cases are in
+   corresponding sub-directories.
+
+
+Futher Information
+------------------
+
+For futher information about test suite, please refer to document in
+doc sub-directory.
+
+README.kdump:		For testing via kdump. With kdump, a real panic
+			will triggered.
+design.txt:		Simple design document

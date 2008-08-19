@@ -1,0 +1,8 @@
+# WARNING
+# this will panic your machine!
+# don't try casually
+CPU 0
+STATUS fatal
+RIP 12343434
+MISC 11
+NOBROADCAST

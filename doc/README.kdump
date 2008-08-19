@@ -1,0 +1,84 @@
+KDUMP TEST DRIVER
+-----------------
+
+The kdump test driver is based on the kdump test case in Linux Test
+Project, thank LTP for their excellent work!
+
+The kdump driver helps run tests which trigger crash/panic and
+generate result and report via kdump.  The testscripts cycle through a
+series of crash/panic scenarios. Each test cycle does the following:
+
+1.  Triggers a test case which triggers crash/panic.
+2.  Kdump kernel boots and saves a vmcore.
+3.  System reboots to 1st kernel.
+4.  Verifies test case, generate result and report.
+5.  After a 1 to 2 minute delay, the next test case is run. 
+
+
+TEST INSTRUCTION
+----------------
+
+Follow the steps to setup kdump test driver.
+
+The test driver is written for SuSE Linux Enterprise Server 10 (and
+onward releases), OpenSUSE, Fedora, Debian, as well as RedHat
+Enterprise Linux 5. Since KDUMP is supported by the above mentioned
+distro's the test driver was written and tested on them. Contribution
+towards supporting more distributions are welcome.
+
+1. Install these additional packages:
+
+For SLES10 or OpenSUSE Distro :
+   
+   * kernel-kdump
+   * kernel-source
+   * kexec-tools
+   * zlib-64bit-<xxx> (ppc64 only)
+   * expect (if dump to a network destination)
+
+For RHEL5 or Fedora distro :
+
+   * kexec-tools
+   * kernel-devel
+   * kernel-debuginfo rpm (if using crash to verify vmcore)
+   * kernel-kdump ( only for ppc64 )
+   * expect (if dump to a network destination)
+
+2. Make sure the partition where the test driver is running has space
+for the tests results and one vmcore file (size of physical memory).
+
+3. Modify configuration file or use a existing one in config/, such as
+kdump.conf.
+
+4. Run "make". Carefully check for any errors.
+
+5. Run "drivers/kdump/driver.sh <conf>"
+
+Few Important points to remember:
+      
+* If you need to stop the tests before all test cases have run, run
+"crontab -r" and "killall driver.sh" within 1 minute after the 1st
+kernel reboots. Then, if you'd like to carry on tests from the point
+on, run "drivers/kdump/driver.sh <conf>". If you'd like to start
+tests from the beginning, run "make reset" first.
+
+* A failure is likely to occur when booting the kdump kernel. If this
+happens, you'll need to manually reset the system so it reboots back to
+the 1st kernel and continues on to the next test. For this reason, it's
+best to monitor the tests from a console. If possible, setup a serial
+console (not a must, any type of console setup will do). If using
+minicom, enable saving of kernel messages displayed on minicom into a
+file, by pressing ctrl+a+l on the console. Else, when it is observed
+that the kdump kernel has failed to boot, manually copy the boot message
+into a file to enable the debugging the cause of the hang.
+
+* The results are saved in results/result, which also shows where you
+are in the test run. When the "Test run complete" entry appears in
+that file, you're done. Verbose log can be found at work/log.
+
+* The test machine would be unavailabe for any other work during the
+period of the test run.
+
+* System may hang if incorrect partition information is provided for
+dumping, like specifying a partition which does not exist, specifying a
+parition label which does not exist. This is not kdump driver bug.
