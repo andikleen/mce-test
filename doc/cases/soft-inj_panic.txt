@@ -1,0 +1,62 @@
+Overall:
+
+- Test method
+  * Add cases/soft-inj/panic/cases.sh into configuration file, and invoke
+    a test driver on it.
+- Common
+  * Test script of test cases in this file can be found in
+    cases/soft-inj/panic/cases.sh
+
+1. fatal
+
+- Objective:
+  * Test MSR read logic of MCE handler
+  * Test synchronization between monarch and subject
+  * Test logic to recognize a fatal (PCC) MCE
+- Code path tested:
+  * do_machine_check() until mce_sync_monarch/subject()
+  * mce_sync_monarch()
+  * mce_sync_subject()
+  * mce_reign() until mce_panic("Fatal machine check",)
+  * mce_severity()
+  * mce_timeout() except if (*t <= 0) branch
+  * mce_panic()
+  * print_mce()
+  * mce_log()
+- Reference:
+  * Inject data file: cases/soft-inj/panic/data/fatal
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Fatal machine check"
+
+
+2. fatal with timeout
+
+- Objective:
+  * Test logic of timeout during monarch/subject synchronization
+- Code path tested:
+  * do_machine_check() from mce_sync_monarch/subject() to
+    mce_panic("Machine check",);
+  * mce_timeout() if (*t <= 0) branch
+- Reference:
+  * Inject data file: cases/soft-inj/panic/data/fatal_timeout
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Machine check"
+  * Timeout message in kernel log
+
+
+3. fatal in irq
+
+- Objective:
+  * Test fatal MCE occur in IRQ context
+- Code path tested:
+  * Same as fatal
+- Reference:
+  * Inject data file: cases/soft-inj/panic/fatal_irq
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Fatal machine check"
