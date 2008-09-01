@@ -86,6 +86,36 @@ get_mcelog_from_klog()
     fi
 }
 
+get_gcov()
+{
+    [ $# -eq 1 ] || die "missing parameter for get_gcov"
+    src_path=$1
+    src_fn=$(basename $src_path)
+    src_dir=$(dirname $src_path)
+    if [ -z "$GCOV" ]; then
+	return
+    fi
+    abs_dir=$KSRC_DIR/$src_dir
+    case $GCOV in
+	copy)
+	    cp /proc/gcov/$src_dir/*.gcda $abs_dir
+	    ;;
+	dump)
+	    true
+	    ;;
+	*)
+	    echo "  Failed: can not get gcov path, invalide GCOV=$GCOV"
+	    return
+	    ;;
+    esac
+    if ! (cd $abs_dir; gcov $src_fn &> /dev/null) || \
+	! [ -s $abs_dir/$src_fn.gcov ]; then
+	echo "  Failed: can not get gcov graph"
+	return
+    fi
+    cp $abs_dir/$src_fn.gcov $RDIR/$this_case
+}
+
 verify_klog()
 {
     [ $# -eq 1 ] || die "missing parameter for verify_klog"
