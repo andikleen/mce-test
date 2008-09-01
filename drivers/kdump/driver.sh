@@ -31,7 +31,7 @@ setup_crontab ()
 
     cat <<EOF > $WDIR/kdump.cron
 SHELL=/bin/sh
-PATH=/usr/bin:/usr/sbin:/sbin:/bin
+PATH=/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
 MAILTO=root
 @reboot cd "$(pwd)"; ${0} $conf >> $WDIR/log 2>&1; cat $WDIR/log > /dev/console
 EOF
