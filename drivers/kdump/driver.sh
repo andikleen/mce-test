@@ -73,27 +73,65 @@ setup_kdump ()
     fi    
 }
 
+get_klog()
+{
+    klog=$RDIR/$this_case/klog
+    cat <<EOF > $WDIR/gdb.cmd
+dump memory $klog log_buf log_buf+log_end
+EOF
+    set +e
+    gdb -batch -batch-silent -x $WDIR/gdb.cmd $VMLINUX $vmcore \
+	> /dev/null 2>&1
+    ret=$?
+    set -e
+    if [ $ret -eq 0 -a -s $klog ]; then
+	export klog
+    else
+	echo "  Failed: can not get kernel log"
+	rm -rf $klog
+    fi
+}
+
+dump_gcov()
+{
+    if [ -z "$GCOV" ]; then
+	return
+    fi
+    if [ -z "$KSRC_DIR" ]; then
+	echo "  Failed: please set KSRC_DIR for GCOV"
+	return
+    fi
+    export KSRC_DIR
+    gcov_head_raw=$WDIR/gcov_head_raw
+    cat <<EOF > $WDIR/gcov_gdb.cmd
+dump value $gcov_head_raw bb_head
+EOF
+    set +e
+    gdb -batch -batch-silent -x $WDIR/gcov_gdb.cmd $VMLINUX $vmcore \
+	> /dev/null 2>&1
+    ret=$?
+    set -e
+    if [ $ret -ne 0 -o ! -s $gcov_head_raw ]; then
+	echo "  Failed: can not get kernel gcov_info_head"
+	return
+    fi
+    wl=$(stat -c '%s' $gcov_head_raw)
+    h=$(echo -n 0x; od -A n -t x$wl $gcov_head_raw | tr -d ' ')
+    if ! gcovdump -g $h $vmcore &> /dev/null; then
+	echo "  Failed: can not dump kernel gcov info"
+	return
+    fi
+    export GCOV=dump
+}
+
 get_result ()
 {
     vmcore=$(ls -t "${COREDIR}"/*/vmcore* 2>/dev/null | head -1)
 
     if [ -n "$vmcore" -a -f $vmcore ]; then
 	export vmcore
-	klog=$RDIR/$this_case/klog
-	cat <<EOF > $WDIR/gdb.cmd
-dump memory $klog log_buf log_buf+log_end
-EOF
-	set +e
-	gdb -batch -batch-silent -x $WDIR/gdb.cmd $VMLINUX $vmcore \
-	    > /dev/null 2>&1
-	ret=$?
-	set -e
-	if [ $ret -eq 0 -a -s $klog ]; then
-	    export klog
-	else
-	    echo "  Failed: can not get kernel log"
-	    rm -rf $klog
-	fi
+	get_klog
+	dump_gcov
     else
 	echo "  Failed: can not get vmcore"
     fi
