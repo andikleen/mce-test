@@ -4,7 +4,7 @@
 # dump. The test result is collected via dumped vmcore. For more
 # information about kdump dirver please refer to doc/README.kdump.
 #
-# Copyright (C) 2008-2009, Intel Corp.
+# Copyright (C) 2008, Intel Corp.
 #   Author: Huang Ying <ying.huang@intel.com>
 #
 # This file is based on kdump test case in LTP.

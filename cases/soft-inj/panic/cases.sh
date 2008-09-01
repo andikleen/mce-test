@@ -3,7 +3,7 @@
 # Software injection based test cases - panic cases: test cases are
 # triggered via bin/inject tool, and they will trigger kernel panic.
 #
-# Copyright (C) 2008-2009, Intel Corp.
+# Copyright (C) 2008, Intel Corp.
 #   Author: Huang Ying <ying.huang@intel.com>
 #
 # This file is released under the GPLv2.

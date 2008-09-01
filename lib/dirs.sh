@@ -1,7 +1,7 @@
 #
 # Setup environment variable for various directories.
 #
-# Copyright (C) 2008-2009, Intel Corp.
+# Copyright (C) 2008, Intel Corp.
 #   Author: Huang Ying <ying.huang@intel.com>
 #
 # This file is released under the GPLv2.

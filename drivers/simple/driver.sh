@@ -3,7 +3,7 @@
 # Simple test driver: run test cases one by one, assuming test case
 # will not trigger panic or reboot.
 #
-# Copyright (C) 2008-2009, Intel Corp.
+# Copyright (C) 2008, Intel Corp.
 #   Author: Huang Ying <ying.huang@intel.com>
 #
 # This file is released under the GPLv2.
