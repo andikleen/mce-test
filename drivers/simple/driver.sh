@@ -42,6 +42,24 @@ klog_end()
     return $ret
 }
 
+trigger()
+{
+    if [ -n "$GCOV" ]; then
+	echo 0 > /proc/gcov/vmlinux
+    fi
+
+    $CDIR/$case_sh trigger
+}
+
+get_result()
+{
+    if [ -n "$GCOV" ]; then
+	export GCOV=copy
+	export KSRC_DIR
+    fi
+    $CDIR/$case_sh get_result
+}
+
 test_all()
 {
     for case_sh in $CASES; do
@@ -58,9 +76,9 @@ test_all()
 
 	    random_sleep
 	    local before=$(klog_begin)
-	    $CDIR/$case_sh trigger 2>$err_log | tee -a $RDIR/result
+	    trigger 2>$err_log | tee -a $RDIR/result
 	    klog_end $before
-	    $CDIR/$case_sh get_result 2>$err_log | tee -a $RDIR/result
+	    get_result 2>$err_log | tee -a $RDIR/result
 	    $CDIR/$case_sh verify 2>$err_log | tee -a $RDIR/result
 	done
     done
