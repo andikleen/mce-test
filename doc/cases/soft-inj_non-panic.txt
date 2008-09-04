@@ -38,3 +38,29 @@ Overall:
 - Expected results:
   * MCE records gotten via /dev/mcelog is same as injected ones
   * No warning or bug during kernel processing
+
+
+3. corrected over
+
+- Objective:
+  * Test OVER processing
+- Code path tested:
+  * same as 1
+- Reference:
+  * Inject data file: cases/soft-inj/non-panic/data/corrected_over
+- Expected results:
+  * MCE records gotten via /dev/mcelog is same as injected ones
+  * No warning or bug during kernel processing
+
+
+4. corrected without EN
+
+- Objective:
+  * Test no EN processing
+- Code path tested:
+  * same as 1
+- Reference:
+  * Inject data file: cases/soft-inj/non-panic/data/corrected_no_en
+- Expected results:
+  * MCE records gotten via /dev/mcelog is same as injected ones
+  * No warning or bug during kernel processing

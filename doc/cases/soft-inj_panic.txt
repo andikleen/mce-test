@@ -31,7 +31,7 @@ Overall:
   * Kernel panic message is "Fatal machine check"
 
 
-2. fatal with timeout
+2. fatal timeout
 
 - Objective:
   * Test logic of timeout during monarch/subject synchronization
@@ -56,6 +56,64 @@ Overall:
   * Same as fatal
 - Reference:
   * Inject data file: cases/soft-inj/panic/fatal_irq
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Fatal machine check"
+
+
+4. fatal with RIPV
+
+- Objective:
+  * Test combination of PCC and RIPV
+- Code path tested:
+  * MCG_STATUS_RIPV branch of switch(m.mcgstatus) in do_machine_check
+- Reference:
+  * Inject data file: cases/soft-inj/panic/data/fatal_ripv
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Fatal machine check"
+
+
+5. fatal timeout with RIPV
+
+- Objective:
+  * Test timeout logic of combination of PCC and RIPV
+- Code path tested:
+  * same as "fatal with RIPV", except timeout during sychronizing.
+- Reference:
+  * Inject data file: cases/soft-inj/panic/data/fatal_timeout_ripv
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Machine check"
+  * Timeout message in kernel log
+
+
+6. fatal with OVER
+
+- Objective:
+  * Test OVER flag in MCI_STATUS processing
+- Code path tested:
+  * Same as fatal
+- Reference:
+  * Inject data file: cases/soft-inj/panic/data/fatal_over
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Fatal machine check"
+
+
+7. fatal and UC without EN
+
+- Objective:
+  * Test no EN processing. Only one MCE can be injected on one CPU, so
+    a MCE without EN are injected on other CPU.
+- Code path tested:
+  * Same as fatal except no EN branch in do_machine_check()
+- Reference:
+  * Inject data file: cases/soft-inj/panic/data/fatal_no_en
 - Expected result:
   * No warning or bug during kernel processing.
   * MCE records collected via kernel panic log is same as reference ones.

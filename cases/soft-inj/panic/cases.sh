@@ -30,7 +30,7 @@ get_result()
     get_gcov arch/x86/kernel/cpu/mcheck/mce_64.c
 
     case "$bcase" in
-	fatal|fatal_irq|fatal_timeout)
+	fatal*)
 	    get_mcelog_from_klog $klog $mcelog_result
 	    ;;
 	*)
@@ -42,8 +42,15 @@ verify()
 {
     removes="TSC"
     case "$bcase" in
-	fatal|fatal_irq)
+	fatal|fatal_irq|fatal_over|fatal_no_en)
 	    removes="TSC RIP"
+	    mce_panic=": Fatal machine check"
+	    soft_inject_verify_mcelog
+	    verify_klog $klog
+	    verify_panic $klog "$mce_panic"
+	    ;;
+	fatal_ripv)
+	    removes="TSC"
 	    mce_panic=": Fatal machine check"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
@@ -51,6 +58,14 @@ verify()
 	    ;;
 	fatal_timeout)
 	    removes="TSC RIP"
+	    mce_panic=": Machine check"
+	    soft_inject_verify_mcelog
+	    verify_klog $klog
+	    verify_panic $klog "$mce_panic"
+	    verify_timeout $klog
+	    ;;
+	fatal_timeout_ripv)
+	    removes="TSC"
 	    mce_panic=": Machine check"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog

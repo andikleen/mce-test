@@ -31,7 +31,7 @@ get_result()
     get_gcov arch/x86/kernel/cpu/mcheck/mce_64.c
 
     case "$bcase" in
-	corrected|corrected_hold)
+	corrected|corrected_hold|corrected_over|corrected_no_en)
 	    get_mcelog_from_dev $mcelog_result
 	    ;;
 	*)
@@ -43,7 +43,7 @@ verify()
 {
     removes="TSC"
     case "$bcase" in
-	corrected|corrected_hold)
+	corrected|corrected_hold|corrected_over|corrected_no_en)
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
 	    ;;
