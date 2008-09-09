@@ -215,7 +215,7 @@ for case_sh in ${CASES}; do
 	if [ ! -f $WDIR/stamps/${_this_case}_triggered ]; then
 	    echo > $WDIR/stamps/${_this_case}_triggered
 
-	    echo "$this_case:" | tee -a $RDIR/result
+	    echo -e "\n$this_case:" | tee -a $RDIR/result
 	    mkdir -p $RDIR/$this_case
 	    rm -rf $RDIR/$this_case/*
 

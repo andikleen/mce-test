@@ -67,7 +67,7 @@ test_all()
 	    export this_case
 	    mkdir -p $RDIR/$this_case
 	    rm -rf $RDIR/$this_case/*
-	    echo "$this_case:" | tee -a $RDIR/result
+	    echo -e "\n$this_case:" | tee -a $RDIR/result
 	    klog=$RDIR/$this_case/klog
 
 	    mkdir -p $WDIR/$this_case
