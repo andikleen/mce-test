@@ -94,6 +94,16 @@ conf=$(basename "$1")
 
 driver_prepare
 
-start_background
+if [ -n "$START_BACKGROUND" ]; then
+    eval $START_BACKGROUND
+else
+    start_background
+fi
+
 test_all
-stop_background
+
+if [ -n "$STOP_BACKGROUND" ]; then
+    eval $STOP_BACKGROUND
+else
+    stop_background
+fi
