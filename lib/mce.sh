@@ -42,7 +42,8 @@ mce_reformat_for_cmp()
 	done
     fi
 
-    cat $tmpf | tr '\n' ':' | sed '1,$s/::/\n/g' | sort > "$outf"
+    cat $tmpf | tr '\n' '#' | sed '1,$s/##/\n/g' | \
+	grep -v '#STATUS 0x0#' | sort > "$outf"
 }
 
 mce_cmp()
