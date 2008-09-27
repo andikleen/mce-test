@@ -18,6 +18,8 @@ export ROOT=`(cd $sd/../..; pwd)`
 setup_path
 . $ROOT/lib/dirs.sh
 
+export driver=cross
+
 setup_remote()
 {
     ssh -n -T $RMUSR@$RMHOST rm -rf $RMDIR || die

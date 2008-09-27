@@ -19,6 +19,8 @@ export ROOT=`(cd $sd/../..; pwd)`
 setup_path
 . $ROOT/lib/dirs.sh
 
+export driver=kdump
+
 setup_crontab ()
 {
     echo "Setup crontab."

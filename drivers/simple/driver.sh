@@ -17,6 +17,7 @@ setup_path
 . $ROOT/lib/dirs.sh
 
 tmp_klog=$WDIR/simple_klog_tmp
+export driver=simple
 
 klog_begin()
 {
