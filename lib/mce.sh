@@ -10,8 +10,8 @@
 extract_mce_from_log()
 {
     [ $# -eq 2 ] || die "missing parameter for extract_mce_from_log"
-    log="$1"
-    outf="$2"
+    local log="$1"
+    local outf="$2"
 
     sed '1,/HARDWARE ERROR/d' "$log" | \
 	mcelog --no-dmi --dump-raw-ascii --ascii > "$outf"
@@ -20,19 +20,19 @@ extract_mce_from_log()
 mce_reformat()
 {
     [ $# -eq 2 ] || die "missing parameter for mce_reformat"
-    org="$1"
-    outf="$2"
+    local org="$1"
+    local outf="$2"
 
     inject --dump "$org" > "$outf"
 }
 
 mce_reformat_for_cmp()
 {
-    inf="$1"
-    outf="$2"
-    removes="$3"
+    local inf="$1"
+    local outf="$2"
+    local removes="$3"
 
-    tmpf=$WDIR/mce_reformat_for_cmp
+    local tmpf=$WDIR/mce_reformat_for_cmp
 
     inject --dump "$inf" > $tmpf
 
@@ -49,12 +49,12 @@ mce_reformat_for_cmp()
 mce_cmp()
 {
     [ $# -eq 3 ] || die "missing parameter for mce_cmp"
-    m1="$1"
-    m2="$2"
-    removes="$3"
+    local m1="$1"
+    local m2="$2"
+    local removes="$3"
 
-    tmpf1=$WDIR/mce_cmp_1
-    tmpf2=$WDIR/mce_cmp_2
+    local tmpf1=$WDIR/mce_cmp_1
+    local tmpf2=$WDIR/mce_cmp_2
 
     mce_reformat_for_cmp "$m1" $tmpf1 "$removes"
     mce_reformat_for_cmp "$m2" $tmpf2 "$removes"
@@ -64,7 +64,7 @@ mce_cmp()
 get_mcelog_from_dev()
 {
     [ $# -eq 1 ] || die "missing parameter for get_mcelog_from_dev"
-    mcelog_result="$1"
+    local mcelog_result="$1"
     if mcelog --dump-raw-ascii > "$mcelog_result" && \
 	[ -s "$mcelog_result" ]; then
 	true
@@ -77,8 +77,8 @@ get_mcelog_from_dev()
 get_mcelog_from_klog()
 {
     [ $# -eq 2 ] || die "missing parameter for get_mcelog_from_klog"
-    klog="$1"
-    mcelog_result="$2"
+    local klog="$1"
+    local mcelog_result="$2"
     if [ -f "$klog" ] && extract_mce_from_log "$klog" "$mcelog_result" && \
 	[ -s "$mcelog_result" ]; then
 	true
@@ -90,13 +90,13 @@ get_mcelog_from_klog()
 get_gcov()
 {
     [ $# -eq 1 ] || die "missing parameter for get_gcov"
-    src_path=$1
-    src_fn=$(basename $src_path)
-    src_dir=$(dirname $src_path)
+    local src_path=$1
+    local src_fn=$(basename $src_path)
+    local src_dir=$(dirname $src_path)
     if [ -z "$GCOV" ]; then
 	return
     fi
-    abs_dir=$KSRC_DIR/$src_dir
+    local abs_dir=$KSRC_DIR/$src_dir
     case $GCOV in
 	copy)
 	    cp /proc/gcov/$src_dir/*.gcda $abs_dir
@@ -120,7 +120,7 @@ get_gcov()
 verify_klog()
 {
     [ $# -eq 1 ] || die "missing parameter for verify_klog"
-    klog="$1"
+    local klog="$1"
     if [ -f "$klog" ]; then
 	if check_kern_warning_bug "$klog"; then
 	    echo "  Failed: kernel warning or bug during MCE"
@@ -135,8 +135,8 @@ verify_klog()
 verify_panic()
 {
     [ $# -eq 2 ] || die "missing parameter for verify_panic"
-    klog="$1"
-    mce_panic="$2"
+    local klog="$1"
+    local mce_panic="$2"
     if [ ! -f "$klog" ]; then
 	echo "  Failed: no kernel log for checking panic"
 	return -1
@@ -152,7 +152,7 @@ verify_panic()
 verify_timeout()
 {
     [ $# -eq 1 ] || die "missing parameter for verify_timeout"
-    klog="$1"
+    local klog="$1"
     if [ ! -f "$klog" ]; then
 	echo "  Failed: No kernel log for checking timeout"
 	return -1

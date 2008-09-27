@@ -74,7 +74,7 @@ test_all()
 
 	    mkdir -p $WDIR/$this_case
 	    rm -rf $WDIR/$this_case/*
-	    err_log=$WDIR/$this_case/err_log
+	    local err_log=$WDIR/$this_case/err_log
 
 	    random_sleep
 	    local before=$(klog_begin)

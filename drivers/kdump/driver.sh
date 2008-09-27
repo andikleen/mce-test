@@ -105,7 +105,7 @@ dump_gcov()
 	return
     fi
     export KSRC_DIR
-    gcov_head_raw=$WDIR/dump_gcov_head_raw
+    local gcov_head_raw=$WDIR/dump_gcov_head_raw
     cat <<EOF > $WDIR/dump_gcov_gdb.cmd
 dump value $gcov_head_raw bb_head
 EOF

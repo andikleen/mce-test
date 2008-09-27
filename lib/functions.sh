@@ -14,14 +14,14 @@ setup_path()
 
 script_dir()
 {
-    rd=$(dirname "$0")
+    local rd=$(dirname "$0")
     (cd $rd; pwd)
 }
 
 relative_path()
 {
-    len1=${#1}
-    len2=${#2}
+    local len1=${#1}
+    local len2=${#2}
     if [ $len1 -eq 0 -o $len1 -ge $len2 -o "${2:0:$len1}" != "$1" ]; then
 	die "$2 is not the sub-path of $1!"
     fi
@@ -42,7 +42,7 @@ driver_prepare()
 
 check_kern_warning_bug()
 {
-    f="$1"
+    local f="$1"
     [ -n "$f" ] || die "missing parameter for check_kern_warning"
     grep -e '----\[ cut here \]---' $f > /dev/null || \
 	grep -e 'BUG:' $f > /dev/null
@@ -50,7 +50,7 @@ check_kern_warning_bug()
 
 random_sleep()
 {
-    s=$((RANDOM / 6553))
+    local s=$((RANDOM / 6553))
     sleep $s
 }
 
@@ -73,10 +73,11 @@ stop_background()
 
 filter_fake_panic()
 {
-    orig_klog=$1
-    new_klog=$2
+    local orig_klog=$1
+    local new_klog=$2
     [ $# -eq 2 ] || die "missing parameter for filter_fake_panic"
 
+    local pn
     pn=$(grep -n "Fake kernel panic" $orig_klog | cut -d ':' -f 1 | head -1)
     if [ -z "$pn" ]; then
 	cp $orig_klog $new_klog

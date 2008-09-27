@@ -36,8 +36,8 @@ soft_inject_verify_mcelog()
 
 soft_inject_get_klog()
 {
-    klog=$RDIR/$this_case/klog
-    orig_klog=$RDIR/$this_case/orig_klog
+    local klog=$RDIR/$this_case/klog
+    local orig_klog=$RDIR/$this_case/orig_klog
 
     if [ -f $klog ]; then
 	cp $klog $orig_klog
@@ -58,7 +58,7 @@ soft_inject_verify_return_val()
 
 soft_inject_enumerate()
 {
-    base=$(relative_path ${CDIR} ${SDIR})
+    local base=$(relative_path ${CDIR} ${SDIR})
     [ -z "$base" ] && die "BUG!!! Please contact your software vendor!"
     for c in $(cd $SDIR/data; ls *[^~]); do
 	echo $base/$c
@@ -69,7 +69,7 @@ soft_inject_trigger()
 {
     mcelog &> /dev/null
     inject $SDIR/data/$bcase
-    ret=$?
+    local ret=$?
     echo $ret > $RDIR/$this_case/return
     sleep 1
 }

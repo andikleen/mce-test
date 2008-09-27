@@ -40,7 +40,8 @@ get_result()
 
 verify()
 {
-    removes="TSC"
+    local mce_panic
+    local removes="TSC"
     case "$bcase" in
 	fatal|fatal_irq|fatal_over|fatal_no_en)
 	    removes="TSC RIP"

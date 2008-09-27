@@ -41,7 +41,7 @@ get_result()
 
 verify()
 {
-    removes="TSC"
+    local removes="TSC"
     case "$bcase" in
 	corrected|corrected_hold|corrected_over|corrected_no_en)
 	    soft_inject_verify_mcelog
