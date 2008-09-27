@@ -32,7 +32,7 @@ mce_reformat_for_cmp()
     outf="$2"
     removes="$3"
 
-    tmpf=$WDIR/mce-tmp-1
+    tmpf=$WDIR/mce_reformat_for_cmp
 
     inject --dump "$inf" > $tmpf
 

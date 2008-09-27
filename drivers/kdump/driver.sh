@@ -79,11 +79,11 @@ setup_kdump ()
 get_klog()
 {
     klog=$RDIR/$this_case/klog
-    cat <<EOF > $WDIR/gdb.cmd
+    cat <<EOF > $WDIR/get_klog_gdb.cmd
 dump memory $klog log_buf log_buf+log_end
 EOF
     set +e
-    gdb -batch -batch-silent -x $WDIR/gdb.cmd $VMLINUX $vmcore \
+    gdb -batch -batch-silent -x $WDIR/get_klog_gdb.cmd $VMLINUX $vmcore \
 	> /dev/null 2>&1
     ret=$?
     set -e
@@ -105,12 +105,12 @@ dump_gcov()
 	return
     fi
     export KSRC_DIR
-    gcov_head_raw=$WDIR/gcov_head_raw
-    cat <<EOF > $WDIR/gcov_gdb.cmd
+    gcov_head_raw=$WDIR/dump_gcov_head_raw
+    cat <<EOF > $WDIR/dump_gcov_gdb.cmd
 dump value $gcov_head_raw bb_head
 EOF
     set +e
-    gdb -batch -batch-silent -x $WDIR/gcov_gdb.cmd $VMLINUX $vmcore \
+    gdb -batch -batch-silent -x $WDIR/dump_gcov_gdb.cmd $VMLINUX $vmcore \
 	> /dev/null 2>&1
     ret=$?
     set -e
