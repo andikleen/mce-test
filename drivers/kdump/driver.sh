@@ -18,6 +18,7 @@ export ROOT=`(cd $sd/../..; pwd)`
 . $ROOT/lib/functions.sh
 setup_path
 . $ROOT/lib/dirs.sh
+. $ROOT/lib/mce.sh
 
 export driver=kdump
 
@@ -171,6 +172,7 @@ conf=$(basename "$1")
 . $CONF_DIR/$conf
 
 driver_prepare
+set_tolerant 1
 
 # Check mandatory variables.
 if [ -z "${COREDIR}" ]; then

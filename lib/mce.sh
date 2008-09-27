@@ -166,3 +166,13 @@ verify_timeout()
     fi
 }
 
+set_tolerant()
+{
+    [ $# -eq 1 ] || die "missing parameter for set_tolerant"
+    echo -n $1 > /sys/devices/system/machinecheck/machinecheck0/tolerant
+}
+
+get_tolerant()
+{
+    cat /sys/devices/system/machinecheck/machinecheck0/tolerant
+}

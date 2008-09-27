@@ -15,6 +15,7 @@ export ROOT=`(cd $sd/../..; pwd)`
 . $ROOT/lib/functions.sh
 setup_path
 . $ROOT/lib/dirs.sh
+. $ROOT/lib/mce.sh
 
 tmp_klog=$WDIR/simple_klog_tmp
 export driver=simple
@@ -94,6 +95,7 @@ conf=$(basename "$1")
 . $CONF_DIR/$conf
 
 driver_prepare
+set_tolerant 3
 
 if [ -n "$START_BACKGROUND" ]; then
     eval $START_BACKGROUND
