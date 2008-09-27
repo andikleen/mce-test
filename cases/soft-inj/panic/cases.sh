@@ -31,7 +31,7 @@ get_result()
 
     case "$bcase" in
 	fatal*)
-	    get_mcelog_from_klog $klog $mcelog_result
+	    soft_inject_get_mcelog
 	    ;;
 	*)
 	    echo '!!! Unknown case: $this_case !!!'
@@ -40,38 +40,32 @@ get_result()
 
 verify()
 {
-    local mce_panic
     local removes="TSC"
+    local mce_panic=": Fatal machine check"
     case "$bcase" in
 	fatal|fatal_irq|fatal_over|fatal_no_en)
 	    removes="TSC RIP"
-	    mce_panic=": Fatal machine check"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    verify_panic $klog "$mce_panic"
+	    soft_inject_verify_panic "$mce_panic"
 	    ;;
 	fatal_ripv)
-	    removes="TSC"
-	    mce_panic=": Fatal machine check"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    verify_panic $klog "$mce_panic"
+	    soft_inject_verify_panic "$mce_panic"
 	    ;;
 	fatal_timeout)
 	    removes="TSC RIP"
-	    mce_panic=": Machine check"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    verify_panic $klog "$mce_panic"
-	    verify_timeout $klog
+	    soft_inject_verify_panic "$mce_panic"
+	    soft_inject_verify_timeout
 	    ;;
 	fatal_timeout_ripv)
-	    removes="TSC"
-	    mce_panic=": Machine check"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    verify_panic $klog "$mce_panic"
-	    verify_timeout $klog
+	    soft_inject_verify_panic "$mce_panic"
+	    soft_inject_verify_timeout
 	    ;;
 	*)
 	    echo "!!! Unknown case: $this_case !!!"

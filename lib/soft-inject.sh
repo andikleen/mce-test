@@ -45,11 +45,25 @@ soft_inject_get_klog()
     fi
 }
 
+soft_inject_get_mcelog()
+{
+    case "$driver" in
+	simple*)
+	    get_mcelog_from_dev $mcelog_result
+	    ;;
+	kdump*)
+	    get_mcelog_from_klog $klog $mcelog_result
+	    ;;
+	*)
+	    echo '!!! Unsupported driver !!!'
+    esac
+}
+
 # verify return value
 soft_inject_verify_return_val()
 {
     if [ -f $RDIR/$this_case/return ] && \
-	[ $(cat $RDIR/$this_case/return) -eq 135 ]; then
+	[ $(cat $RDIR/$this_case/return) -eq 139 ]; then
 	echo "  Passed: inject process killed!"
     else
 	echo "  Failed: Not killed"
@@ -72,6 +86,37 @@ soft_inject_trigger()
     local ret=$?
     echo $ret > $RDIR/$this_case/return
     sleep 1
+}
+
+soft_inject_verify_panic()
+{
+    local mce_panic="$1"
+    local panicf=$RDIR/$this_case/panic
+    case "$driver" in
+	simple*)
+	    get_panic_from_mcelog $mcelog_result > $panicf
+	    verify_panic_msg "$(cat $panicf)" "$mce_panic"
+	    ;;
+	kdump*)
+	    verify_panic_via_klog $klog "$mce_panic"
+	    ;;
+	*)
+	    echo '!!! Unsupported driver !!!'
+    esac
+}
+
+soft_inject_verify_timeout()
+{
+    case "$driver" in
+	simple*)
+	    verify_timeout_via_mcelog $mcelog_result
+	    ;;
+	kdump*)
+	    verify_timeout_via_klog $klog
+	    ;;
+	*)
+	    echo '!!! Unsupported driver !!!'
+    esac
 }
 
 soft_inject_main()

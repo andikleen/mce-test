@@ -87,6 +87,16 @@ get_mcelog_from_klog()
     fi
 }
 
+mcelog_filter()
+{
+    [ $# -eq 2 ] || die "missing parameter for mcelog_filter"
+    local inf="$1"
+    local pat="$2"
+
+    inject --dump "$inf" | tr '\n' '#' | sed '1,$s/##/\n/g' | \
+	grep -e "$pat"
+}
+
 get_gcov()
 {
     [ $# -eq 1 ] || die "missing parameter for get_gcov"
@@ -132,7 +142,7 @@ verify_klog()
     fi
 }
 
-verify_panic()
+verify_panic_via_klog()
 {
     [ $# -eq 2 ] || die "missing parameter for verify_panic"
     local klog="$1"
@@ -149,7 +159,7 @@ verify_panic()
     fi
 }
 
-verify_timeout()
+verify_timeout_via_klog()
 {
     [ $# -eq 1 ] || die "missing parameter for verify_timeout"
     local klog="$1"
@@ -160,6 +170,43 @@ verify_timeout()
 
     if grep 'Timeout waiting for other CPUs to machine check' "$klog" \
 	> /dev/null; then
+	echo "  Passed: timeout detected"
+    else
+	echo "  Failed: no timeout detected"
+    fi
+}
+
+get_panic_from_mcelog()
+{
+    [ $# -eq 1 ] || die "missing parameter for get_panic_from_mcelog"
+    local mcelog="$1"
+    local tmpf=$WDIR/get_panic_from_mcelog
+    local addr
+    if mcelog_filter $mcelog "#BANK 219#" > $tmpf; then
+	addr=$(head -1 $tmpf | tr '#' '\n' | grep "RIP" | tr ':' '\n' | tail -1)
+	readcore -a $addr -s /proc/kcore
+    fi
+}
+
+verify_panic_msg()
+{
+    [ $# -eq 2 ] || die "missing parameter for verify_panic_msg"
+    local panic_msg="$1"
+    local mce_panic="$2"
+
+    if echo ": $panic_msg" | grep -e "$mce_panic" &> /dev/null; then
+	echo "  Passed: correct panic"
+    else
+	echo "  Failed: uncorrect panic, expected: $mce_panic"
+    fi
+}
+
+verify_timeout_via_mcelog()
+{
+    [ $# -eq 1 ] || die "missing parameter for verify_timeout"
+    local mcelog="$1"
+
+    if mcelog_filter $mcelog "#BANK 218#" &> /dev/null; then
 	echo "  Passed: timeout detected"
     else
 	echo "  Failed: no timeout detected"
