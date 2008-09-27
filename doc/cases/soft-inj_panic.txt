@@ -25,6 +25,7 @@ Overall:
   * mce_log()
 - Reference:
   * Inject data file: cases/soft-inj/panic/data/fatal
+  * Reference MCE records: cases/soft-inj/panic/refer/fatal
 - Expected result:
   * No warning or bug during kernel processing.
   * MCE records collected via kernel panic log is same as reference ones.
@@ -99,6 +100,7 @@ Overall:
   * Same as fatal
 - Reference:
   * Inject data file: cases/soft-inj/panic/data/fatal_over
+  * Reference MCE records: cases/soft-inj/panic/refer/fatal_over
 - Expected result:
   * No warning or bug during kernel processing.
   * MCE records collected via kernel panic log is same as reference ones.
@@ -114,6 +116,7 @@ Overall:
   * Same as fatal except no EN branch in do_machine_check()
 - Reference:
   * Inject data file: cases/soft-inj/panic/data/fatal_no_en
+  * Reference MCE records: cases/soft-inj/panic/refer/fatal_no_en
 - Expected result:
   * No warning or bug during kernel processing.
   * MCE records collected via kernel panic log is same as reference ones.
