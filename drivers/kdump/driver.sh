@@ -230,8 +230,7 @@ for case_sh in ${CASES}; do
 	    triggering=1
 	fi
 
-        # Wait for machine fully booted.
-	sleep 60
+	sleep 5
 
 	if [ -z "$triggering" ]; then
             (get_result; verify_case) | tee -a $RDIR/result
@@ -239,6 +238,10 @@ for case_sh in ${CASES}; do
 	    echo "  Failed: Failed to trigger kdump" | tee -a $RDIR/result
 	fi
 	echo > $WDIR/stamps/${_this_case}_done
+
+        # Wait for system to fully boot and leave a chance for user to
+        # stop test
+	sleep 55
     done
 done
 
