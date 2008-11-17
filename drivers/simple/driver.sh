@@ -12,13 +12,14 @@
 sd=$(dirname "$0")
 export ROOT=`(cd $sd/../..; pwd)`
 
+export driver=simple
+
 . $ROOT/lib/functions.sh
 setup_path
 . $ROOT/lib/dirs.sh
 . $ROOT/lib/mce.sh
 
 tmp_klog=$WDIR/simple_klog_tmp
-export driver=simple
 
 klog_begin()
 {

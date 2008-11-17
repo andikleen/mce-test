@@ -14,11 +14,11 @@
 sd=$(dirname "$0")
 export ROOT=`(cd $sd/../..; pwd)`
 
+export driver=cross
+
 . $ROOT/lib/functions.sh
 setup_path
 . $ROOT/lib/dirs.sh
-
-export driver=cross
 
 setup_remote()
 {

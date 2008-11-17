@@ -15,12 +15,12 @@
 sd=$(dirname "$0")
 export ROOT=`(cd $sd/../..; pwd)`
 
+export driver=kdump
+
 . $ROOT/lib/functions.sh
 setup_path
 . $ROOT/lib/dirs.sh
 . $ROOT/lib/mce.sh
-
-export driver=kdump
 
 setup_crontab ()
 {
@@ -219,9 +219,9 @@ for case_sh in ${CASES}; do
 	if [ ! -f $WDIR/stamps/${_this_case}_triggered ]; then
 	    echo > $WDIR/stamps/${_this_case}_triggered
 
-	    echo -e "\n$this_case:" | tee -a $RDIR/result
 	    mkdir -p $RDIR/$this_case
 	    rm -rf $RDIR/$this_case/*
+	    echo -e "\n$this_case:" | tee -a $RDIR/result
 
 	    echo "Running current test $this_case."
 
