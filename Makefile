@@ -6,6 +6,10 @@ clean:
 	$(MAKE) -C tools clean
 	$(MAKE) reset
 
+distclean:
+	$(MAKE) -C tools distclean
+	$(MAKE) reset
+
 reset:
 	rm -rf work/*
 	rm -rf results/*
