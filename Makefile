@@ -17,3 +17,4 @@ reset:
 test:
 	$(MAKE) reset
 	./drivers/simple/driver.sh simple.conf
+	./drivers/kdump/driver.sh kdump.conf
