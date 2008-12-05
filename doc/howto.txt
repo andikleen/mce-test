@@ -154,16 +154,16 @@ results/<driver_name>/soft-inject/<case_name>/mce_64.c.gcov (for gcov)
 
 mce-inject is a software MCE injection tool, which is based on Linux
 kernel software MCE injection mechanism. To inject a MCE into Linux
-kernel via mce-inject, a data file should be provided, Whose syntax is
-similar as MCE records output by zoology. Please refer to document of
-mce-inject for more information.
+kernel via mce-inject, a data file should be provided. The syntax is
+similar to the logging output by mcelog with some extensions. 
+Please refer to the documentation of mce-inject for more information.
 
 3.2 mcelog
 
 mcelog read /dev/mcelog and prints the stored machine check records to
 stdout. It is used by MCE test suite to verify MCE records generated
 by kernel is same as reference records, at most time, same as input
-records. The mcelog version > FIXME ?? is needed for MCE test suite to
+records. The current git mcelog version is needed for MCE test suite to
 work properly. Please refer to document of mcelog for more
 information. The latest mcelog can be gotten via git snapshot from
 git://git.kernel.org/pub/scm/utils/cpu/mce/mcelog.git.
