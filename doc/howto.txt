@@ -36,9 +36,9 @@ cd mce-inject
 make
 sudo cp inject /usr/sbin	(or somewhere in your $PATH)
 
-- Run make test
-This will do the basic tests, but likely fail the kdump/gcov tests.
-For more information read below.
+- Run make test-simple
+This will do the basic tests, but not the more complicated kdump ones.
+For more information on those read below.
 
 1. Introduction
 ---------------
