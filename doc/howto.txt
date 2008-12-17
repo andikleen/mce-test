@@ -16,6 +16,29 @@ This document explains the structure and design of MCE test suite, the
 kernel patch and user space tools needed for automatic tests, usage
 guide and how to add new test cases into test suite.
 
+0. Quick shortcut
+------------------
+- Get mcelog git version from 
+git://git.kernel.org/pub/scm/utils/cpu/mce/mcelog.git.
+and install in /usr/sbin (or rather first in your $PATH)
+
+git clone git://git.kernel.org/pub/scm/utils/cpu/mce/mcelog.git
+cd mcelog
+make
+sudo make install
+
+- Get mce-inject git version from
+git://git.kernel.org/pub/scm/utils/cpu/mce/mce-inject.git.
+and install in 
+
+git clone git://git.kernel.org/pub/scm/utils/cpu/mce/mce-inject.git
+cd mce-inject
+make
+sudo cp inject /usr/sbin	(or somewhere in your $PATH)
+
+- Run make test
+This will do the basic tests, but likely fail the kdump/gcov tests.
+For more information read below.
 
 1. Introduction
 ---------------
@@ -158,6 +181,8 @@ kernel via mce-inject, a data file should be provided. The syntax is
 similar to the logging output by mcelog with some extensions. 
 Please refer to the documentation of mce-inject for more information.
 
+The inject program must be executable in $PATH.
+
 3.2 mcelog
 
 mcelog read /dev/mcelog and prints the stored machine check records to
@@ -167,6 +192,8 @@ records. The current git mcelog version is needed for MCE test suite to
 work properly. Please refer to document of mcelog for more
 information. The latest mcelog can be gotten via git snapshot from
 git://git.kernel.org/pub/scm/utils/cpu/mce/mcelog.git.
+
+Note you need the git version of mcelog available in $PATH.
 
 3.3 readcore
 
