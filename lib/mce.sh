@@ -183,8 +183,14 @@ get_panic_from_mcelog()
     local tmpf=$WDIR/get_panic_from_mcelog
     local addr
     if mcelog_filter $mcelog "#BANK 219#" > $tmpf; then
-	addr=$(head -1 $tmpf | tr '#' '\n' | grep "RIP" | tr ':' '\n' | tail -1)
-	readcore -a $addr -s /proc/kcore
+	local F="$(awk '/MISC: / { print $2 }' $tmpf)" 
+	case "$F" in 
+	1) echo "Fatal machine check" ;;
+	2) echo "Machine check from unknown source" ;; 
+	3) echo "Uncorrected data corruption machine check" ;;
+	4) echo "Fatal machine check" ;;
+	*) echo unknown panic $F ;;
+	esac
     fi
 }
 
