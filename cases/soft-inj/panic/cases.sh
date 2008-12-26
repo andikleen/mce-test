@@ -40,11 +40,11 @@ get_result()
 
 verify()
 {
-    local removes="TSC"
+    local removes="TSC TIME PROCESSOR"
     local mce_panic=": Fatal machine check"
     case "$bcase" in
 	fatal|fatal_irq|fatal_over|fatal_no_en)
-	    removes="TSC RIP"
+	    removes="$removes RIP"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
 	    soft_inject_verify_panic "$mce_panic"
@@ -55,7 +55,7 @@ verify()
 	    soft_inject_verify_panic "$mce_panic"
 	    ;;
 	fatal_timeout)
-	    removes="TSC RIP"
+	    removes="$removes RIP"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
 	    soft_inject_verify_panic "$mce_panic"
