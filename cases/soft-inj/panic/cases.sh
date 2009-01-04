@@ -41,7 +41,7 @@ get_result()
 verify()
 {
     local removes="TSC TIME PROCESSOR"
-    local mce_panic=": Fatal machine check"
+    local mce_panic="Fatal machine check"
     case "$bcase" in
 	fatal|fatal_irq|fatal_over|fatal_no_en)
 	    removes="$removes RIP"
