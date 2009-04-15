@@ -1,0 +1,121 @@
+Overall:
+
+- Test method
+  * Preparation
+    + Disable mcelog cron job
+  * Add cases/soft-inj/panic_npcc/cases.sh into configuration file, and invoke
+    a test driver on it.
+- Common
+  * Test script of test cases in this file can be found in
+    cases/soft-inj/panic_npcc/cases.sh
+
+
+1. fatal severity
+
+- Objective:
+  * Test severity comparison logic of MCE handler
+- Code path tested:
+  * mce_severity()
+  * mce_regin(), for_each_cpu_mask() loops
+- Reference:
+  * Inject data file: cases/soft-inj/panic_npcc/fatal_severity
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Fatal machine check"
+
+
+2. uncorrected
+
+- Objective:
+  * Test MCE handler logic for EIPV MCE in kernel space
+- Code path tested:
+  * do_machine_check(), mce_panic("Uncorrected machine check",) branch
+- Reference:
+  * Inject data file: cases/soft-inj/panic_npcc/uncorrected
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Uncorrected machine check"
+
+
+3. uncorrected + RIPV
+
+- Objective:
+  * Test MCE handler logic for EIPV|RIPV MCE in kernel space
+- Code path tested:
+  * Same as uncorrected
+- Reference:
+  * Inject data file: cases/soft-inj/panic_npcc/uncorrected_ripv
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Uncorrected machine check"
+
+
+4. uncorrected timeout
+
+- Objective:
+  * Test MCE handler timeout logic for EIPV MCE in kernel space
+- Code path tested:
+  * that of uncorrected, but will timeout in mce_sync_monarch/subject
+- Reference:
+  * Inject data file: cases/soft-inj/panic_npcc/uncorrected_timeout
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Uncorrected machine check"
+
+
+5. uncorrected + RIPV timeout
+
+- Objective:
+  * Test MCE handler timout logic for EIPV|RIPV MCE in kernel space
+- Code path tested:
+  * that of uncorrected, but will timeout in mce_sync_monarch/subject
+- Reference:
+  * Inject data file: cases/soft-inj/panic_npcc/uncorrected_timeout_ripv
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Uncorrected machine check"
+
+
+6. general
+
+- Objective:
+  * Test MCE handler logic for MCE without PCC, EIPV and RIPV
+- Code path tested:
+  * do_machine_check(), mce_panic("Machine check",) branch
+- Reference:
+  * Inject data file: cases/soft-inj/panic_npcc/general
+  * Reference MCE records: cases/soft-inj/panic_npcc/refer/general
+- Expected result:
+  * No warning or bug during kernel processing.
+  * Kernel panic message is "Machine check"
+
+
+7. general timeout
+
+- Objective:
+  * Test MCE handler timeout logic for MCE without PCC, EIPV and RIPV
+- Code path tested:
+  * that of general, but will timeout in mce_sync_monarch/subject
+- Reference:
+  * Inject data file: cases/soft-inj/panic_npcc/general_timeout
+- Expected result:
+  * No warning or bug during kernel processing.
+  * Kernel panic message is "Machine check"
+
+
+8. unknown
+
+- Objective:
+  * Test logic for MCE from unknown source (external?)
+- Code path tested:
+  * mce_reign(), mce_panic("Machine check from unknown source") branch
+- Reference:
+  * Inject data file: cases/soft-inj/panic_npcc/unknown
+- Expected result:
+  * No warning or bug during kernel processing.
+  * Kernel panic message is "Machine check from unknown source"
