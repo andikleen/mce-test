@@ -91,18 +91,7 @@ soft_inject_trigger()
 soft_inject_verify_panic()
 {
     local mce_panic="$1"
-    local panicf=$RDIR/$this_case/panic
-    case "$driver" in
-	simple*)
-	    get_panic_from_mcelog $mcelog_result > $panicf
-	    verify_panic_msg "$(cat $panicf)" "$mce_panic"
-	    ;;
-	kdump*)
-	    verify_panic_via_klog $klog "$mce_panic"
-	    ;;
-	*)
-	    echo '!!! Unsupported driver !!!'
-    esac
+    verify_panic_via_klog $klog "$mce_panic"
 }
 
 soft_inject_verify_timeout()
