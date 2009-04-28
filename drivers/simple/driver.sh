@@ -96,7 +96,7 @@ conf=$(basename "$1")
 . $CONF_DIR/$conf
 
 driver_prepare
-set_tolerant 3
+set_fake_panic 1
 
 if [ -n "$START_BACKGROUND" ]; then
     eval $START_BACKGROUND
@@ -111,3 +111,5 @@ if [ -n "$STOP_BACKGROUND" ]; then
 else
     stop_background
 fi
+
+set_fake_panic 0

@@ -230,3 +230,9 @@ get_tolerant()
 {
     cat /sys/devices/system/machinecheck/machinecheck0/tolerant
 }
+
+set_fake_panic()
+{
+    [ $# -eq 1 ] || die "missing parameter for set_fake_panic"
+    echo -n $1 > /sys/devices/system/machinecheck/machinecheck0/fake_panic
+}
