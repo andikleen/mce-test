@@ -169,7 +169,7 @@ verify_timeout_via_klog()
 	return -1
     fi
 
-    if grep 'Timeout waiting for other CPUs to machine check' "$klog" \
+    if grep "Some CPUs didn't answer in synchronization" "$klog" \
 	> /dev/null; then
 	echo "  Passed: timeout detected"
     else

@@ -96,16 +96,7 @@ soft_inject_verify_panic()
 
 soft_inject_verify_timeout()
 {
-    case "$driver" in
-	simple*)
-	    verify_timeout_via_mcelog $mcelog_result
-	    ;;
-	kdump*)
-	    verify_timeout_via_klog $klog
-	    ;;
-	*)
-	    echo '!!! Unsupported driver !!!'
-    esac
+    verify_timeout_via_klog $klog
 }
 
 soft_inject_main()
