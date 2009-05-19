@@ -66,8 +66,7 @@ get_mcelog_from_dev()
 {
     [ $# -eq 1 ] || die "missing parameter for get_mcelog_from_dev"
     local mcelog_result="$1"
-    if mcelog --dump-raw-ascii > "$mcelog_result" && \
-	[ -s "$mcelog_result" ]; then
+    if mcelog --dump-raw-ascii > "$mcelog_result"; then
 	true
     else
 	echo "  Failed: can not get mce log from /dev/mcelog"
@@ -80,8 +79,7 @@ get_mcelog_from_klog()
     [ $# -eq 2 ] || die "missing parameter for get_mcelog_from_klog"
     local klog="$1"
     local mcelog_result="$2"
-    if [ -f "$klog" ] && extract_mce_from_log "$klog" "$mcelog_result" && \
-	[ -s "$mcelog_result" ]; then
+    if [ -f "$klog" ] && extract_mce_from_log "$klog" "$mcelog_result"; then
 	true
     else
 	echo "  Failed: Can not extract mcelog from console log"
