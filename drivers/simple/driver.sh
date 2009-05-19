@@ -73,6 +73,8 @@ test_all()
 
     for case_sh in $CASES; do
 	for this_case in $($CDIR/$case_sh enumerate); do
+	    set_fake_panic 1
+
 	    export this_case
 	    mkdir -p $RDIR/$this_case
 	    rm -rf $RDIR/$this_case/*
@@ -92,6 +94,8 @@ test_all()
 	    chk_err
 	    $CDIR/$case_sh verify 2>$err_log | tee -a $RDIR/result
 	    chk_err
+
+	    set_fake_panic 0
 	done
     done
 }
@@ -105,7 +109,6 @@ conf=$(basename "$1")
 . $CONF_DIR/$conf
 
 driver_prepare
-set_fake_panic 1
 
 if [ -n "$START_BACKGROUND" ]; then
     eval $START_BACKGROUND
@@ -121,4 +124,3 @@ else
     stop_background
 fi
 
-set_fake_panic 0
