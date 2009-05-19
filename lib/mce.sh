@@ -43,7 +43,7 @@ mce_reformat_for_cmp()
     fi
 
     cat $tmpf | tr '\n' '#' | sed '1,$s/##/\n/g' | \
-	grep-v '#STATUS 0x0#' | \
+	grep -v '#STATUS 0x0#' | \
 	grep -v '#STATUS 0x800000000000000#' | sort > "$outf"
 }
 
