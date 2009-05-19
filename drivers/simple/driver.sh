@@ -21,6 +21,13 @@ setup_path
 
 tmp_klog=$WDIR/simple_klog_tmp
 
+chk_err()
+{
+    if [ -s $err_log ]; then
+	cat $err_log
+    fi
+}
+
 klog_begin()
 {
     dmesg > $tmp_klog
@@ -80,9 +87,12 @@ test_all()
 	    random_sleep
 	    local before=$(klog_begin)
 	    trigger 2>$err_log | tee -a $RDIR/result
+	    chk_err
 	    klog_end $before
 	    get_result 2>$err_log | tee -a $RDIR/result
+	    chk_err
 	    $CDIR/$case_sh verify 2>$err_log | tee -a $RDIR/result
+	    chk_err
 	done
     done
 }
