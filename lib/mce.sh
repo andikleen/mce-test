@@ -96,6 +96,25 @@ mcelog_filter()
 	grep -e "$pat"
 }
 
+reset_gcov()
+{
+    if [ -z "$GCOV" ]; then
+	return
+    fi
+    case $GCOV in
+	copy)
+	    echo 1 > /sys/kernel/debug/gcov/reset
+	    ;;
+	dump)
+	    true;
+	    ;;
+	*)
+	    echo "  Failed: can not reset gcov, invalid GCOV=$GCOV"
+	    return
+	    ;;
+    esac
+}
+
 get_gcov()
 {
     [ $# -eq 1 ] || die "missing parameter for get_gcov"
@@ -105,25 +124,26 @@ get_gcov()
     if [ -z "$GCOV" ]; then
 	return
     fi
-    local abs_dir=$KSRC_DIR/$src_dir
+    local abs_dir=$(cd -P $KSRC_DIR/$src_dir; pwd)
     case $GCOV in
 	copy)
-	    cp /proc/gcov/$src_dir/*.gcda $abs_dir
+	    cp /sys/kernel/debug/gcov/$abs_dir/*.gcda $abs_dir
+	    cp /sys/kernel/debug/gcov/$abs_dir/*.gcno $abs_dir
 	    ;;
 	dump)
 	    true
 	    ;;
 	*)
-	    echo "  Failed: can not get gcov path, invalide GCOV=$GCOV"
+	    echo "  Failed: can not get gcov path, invalid GCOV=$GCOV"
 	    return
 	    ;;
     esac
-    if ! (cd $abs_dir; gcov $src_fn &> /dev/null) || \
-	! [ -s $abs_dir/$src_fn.gcov ]; then
+    if ! (cd $KSRC_DIR; gcov -o $src_dir $src_fn &> /dev/null) || \
+	! [ -s $KSRC_DIR/$src_fn.gcov ]; then
 	echo "  Failed: can not get gcov graph"
 	return
     fi
-    cp $abs_dir/$src_fn.gcov $RDIR/$this_case
+    cp $KSRC_DIR/$src_fn.gcov $RDIR/$this_case
 }
 
 verify_klog()

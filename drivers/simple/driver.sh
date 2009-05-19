@@ -54,24 +54,23 @@ klog_end()
 
 trigger()
 {
-    if [ -n "$GCOV" ]; then
-	echo 0 > /proc/gcov/vmlinux
-    fi
+    reset_gcov
 
     $CDIR/$case_sh trigger
 }
 
 get_result()
 {
-    if [ -n "$GCOV" ]; then
-	export GCOV=copy
-	export KSRC_DIR
-    fi
     $CDIR/$case_sh get_result
 }
 
 test_all()
 {
+    if [ -n "$GCOV" ]; then
+	export GCOV=copy
+	export KSRC_DIR
+    fi
+
     for case_sh in $CASES; do
 	for this_case in $($CDIR/$case_sh enumerate); do
 	    export this_case
