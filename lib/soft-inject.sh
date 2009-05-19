@@ -83,7 +83,7 @@ soft_inject_trigger()
 {
     mcelog &> /dev/null
     inject $SDIR/data/$bcase
-    local ret=$?
+    ret=$?
     echo $ret > $RDIR/$this_case/return
     sleep 1
 }
