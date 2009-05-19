@@ -52,7 +52,7 @@ verify()
 	    soft_inject_verify_panic "$fatal_panic"
 	    soft_inject_verify_exp "$pcc_exp"
 	    ;;
-	fatal_ripv)
+	fatal_ripv|fatal_eipv|fatal_userspace)
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
 	    soft_inject_verify_panic "$fatal_panic"
