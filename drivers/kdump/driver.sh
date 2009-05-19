@@ -107,7 +107,7 @@ dump_gcov()
     export KSRC_DIR
     local gcov_head_raw=$WDIR/dump_gcov_head_raw
     cat <<EOF > $WDIR/dump_gcov_gdb.cmd
-dump value $gcov_head_raw bb_head
+dump value $gcov_head_raw (void *)gcov_info_head
 EOF
     set +e
     gdb -batch -batch-silent -x $WDIR/dump_gcov_gdb.cmd $VMLINUX $vmcore \
@@ -124,6 +124,20 @@ EOF
 	echo "  Failed: can not dump kernel gcov info"
 	return
     fi
+cat <<EOF > $WDIR/dump_gcov_deskew.sh
+    fn="$1"
+    bfn=$(basename "$fn")
+    dbfn="${bfn##\.tmp_}"
+    if [ -z "$dbfn" ]; then
+        return
+    fi
+    d=$(dirname "$fn")
+    mv $fn "$d/$dbfn"
+EOF
+    chmod +x $WDIR/dump_gcov_deskew.sh
+    find $KSRC_DIR -name '*.tmp_*gcno' -o -name '*.tmp_*gcda' \
+        -exec $WDIR/dump_gcov_deskew.sh \{\} \;
+
     export GCOV=dump
 }
 
@@ -131,7 +145,7 @@ get_result ()
 {
     vmcore=$(ls -t "${COREDIR}"/*/vmcore* 2>/dev/null | head -1)
 
-    if [ -n "$vmcore" -a -f $vmcore ]; then
+    if [ -n "$vmcore" -a -f "$vmcore" ]; then
 	export vmcore
 	get_klog
 	dump_gcov
