@@ -99,6 +99,11 @@ soft_inject_verify_timeout()
     verify_timeout_via_klog $klog
 }
 
+soft_inject_verify_exp()
+{
+    verify_exp_via_klog $klog "$@"
+}
+
 soft_inject_main()
 {
     op="$1"

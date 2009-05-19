@@ -195,6 +195,25 @@ verify_timeout_via_klog()
     fi
 }
 
+verify_exp_via_klog()
+{
+    [ $# -ge 2 ] || die "missing parameter for verrify_exp_via_klog"
+    local klog="$1"
+    shift
+    if [ ! -f "$klog" ]; then
+	echo "  Failed: No kernel log for checking MCE exp"
+	return -1
+    fi
+
+    for exp in "$@"; do
+	if grep "Machine check: " "$klog" | grep "$exp" > /dev/null; then
+	    echo "  Passed: correct MCE exp"
+	    return
+	fi
+    done
+    echo "  Failed:  uncorrected MCE exp, expected: $exp"
+}
+
 get_panic_from_mcelog()
 {
     [ $# -eq 1 ] || die "missing parameter for get_panic_from_mcelog"
