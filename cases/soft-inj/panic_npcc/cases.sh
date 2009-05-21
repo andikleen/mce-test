@@ -22,30 +22,13 @@ enumerate()
 trigger()
 {
     soft_inject_trigger
-
-    case "$bcase" in
-	fatal_severity|uncorrected*|uc_no_mcip*|unknown)
-	    ;;
-	*)
-	    if [ "$ret" -ne 0 ]; then
-		echo "  Failed: Failed to trigger"
-	    fi
-	    ;;
-    esac
 }
 
 get_result()
 {
     soft_inject_get_klog
     get_gcov arch/x86/kernel/cpu/mcheck/mce.c
-
-    case "$bcase" in
-	fatal_severity|uncorrected*|unknown|uc_no_mcip*)
-	    soft_inject_get_mcelog
-	    ;;
-	*)
-	    echo "!!! Unknown case: $this_case !!!"
-    esac
+    soft_inject_get_mcelog
 }
 
 verify()
@@ -55,6 +38,8 @@ verify()
     local pcc_exp="Processor context corrupt"
     local knoripv_exp="In kernel and no restart IP"
     local no_mcip_exp="MCIP not set in MCA handler"
+    local no_eripv_exp="Neither restart nor error IP"
+    local over_exp="Overflowed uncorrected"
     local fatal_panic=": Fatal machine check"
     local general_panic=": Machine check"
     local unknown_src_panic=": Machine check from unknown source"
@@ -92,6 +77,34 @@ verify()
 	    verify_klog $klog
 	    soft_inject_verify_panic "$general_panic"
 	    soft_inject_verify_exp "$no_mcip_exp"
+	    soft_inject_verify_timeout
+	    ;;
+	uc_no_eripv)
+	    removes="$removes RIP"
+	    soft_inject_verify_mcelog
+	    verify_klog $klog
+	    soft_inject_verify_panic "$fatal_panic"
+	    soft_inject_verify_exp "$no_eripv_exp"
+	    ;;
+	uc_no_eripv_timeout)
+	    removes="$removes RIP"
+	    soft_inject_verify_mcelog
+	    verify_klog $klog
+	    soft_inject_verify_panic "$general_panic"
+	    soft_inject_verify_exp "$no_eripv_exp"
+	    soft_inject_verify_timeout
+	    ;;
+	uc_over)
+	    soft_inject_verify_mcelog
+	    verify_klog $klog
+	    soft_inject_verify_panic "$fatal_panic"
+	    soft_inject_verify_exp "$over_exp"
+	    ;;
+	uc_over_timeout)
+	    soft_inject_verify_mcelog
+	    verify_klog $klog
+	    soft_inject_verify_panic "$general_panic"
+	    soft_inject_verify_exp "$over_exp"
 	    soft_inject_verify_timeout
 	    ;;
 	unknown)
