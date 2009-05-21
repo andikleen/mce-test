@@ -21,6 +21,7 @@ enumerate()
 
 trigger()
 {
+    reset_severity_cov
     soft_inject_trigger
 }
 
@@ -28,6 +29,7 @@ get_result()
 {
     soft_inject_get_klog
     get_gcov arch/x86/kernel/cpu/mcheck/mce.c
+    get_severity_cov
 
     case "$bcase" in
 	fatal*)

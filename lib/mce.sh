@@ -146,6 +146,21 @@ get_gcov()
     cp $KSRC_DIR/$src_fn.gcov $RDIR/$this_case
 }
 
+reset_severity_cov()
+{
+    echo 1 > /sys/kernel/debug/mce/severities-coverage
+}
+
+get_severity_cov()
+{
+    local sev_cor=/sys/kernel/debug/mce/severities-coverage
+    if [ ! -f $sev_cor ]; then
+	echo "  Failed: can not get severities_coverage"
+	return
+    fi
+    cp $sev_cor $RDIR/$this_case
+}
+
 verify_klog()
 {
     [ $# -eq 1 ] || die "missing parameter for verify_klog"
