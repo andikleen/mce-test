@@ -45,7 +45,7 @@ trigger()
 get_result()
 {
     soft_inject_get_klog
-    get_gcov arch/x86/kernel/cpu/mcheck/mce_64.c
+    get_gcov arch/x86/kernel/cpu/mcheck/mce.c
 
     case "$bcase" in
 	kill|kill_ripv|corrected_kill|kill_kill)
