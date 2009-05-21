@@ -82,7 +82,14 @@ soft_inject_enumerate()
 soft_inject_trigger()
 {
     mcelog &> /dev/null
-    inject $SDIR/data/$bcase
+    case "$driver" in
+	kdump*)
+	    inject --no-random $SDIR/data/$bcase
+	    ;;
+	*)
+	    inject $SDIR/data/$bcase
+	    ;;
+    esac
     ret=$?
     echo $ret > $RDIR/$this_case/return
     sleep 1
