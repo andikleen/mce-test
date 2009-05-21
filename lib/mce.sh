@@ -43,7 +43,7 @@ mce_reformat_for_cmp()
     fi
 
     cat $tmpf | tr '\n' '#' | sed '1,$s/##/\n/g' | \
-	grep-v '#STATUS 0x0#' | \
+	grep -v '#STATUS 0x0#' | \
 	grep -v '#STATUS 0x800000000000000#' | sort > "$outf"
 }
 
@@ -66,8 +66,7 @@ get_mcelog_from_dev()
 {
     [ $# -eq 1 ] || die "missing parameter for get_mcelog_from_dev"
     local mcelog_result="$1"
-    if mcelog --dump-raw-ascii > "$mcelog_result" && \
-	[ -s "$mcelog_result" ]; then
+    if mcelog --dump-raw-ascii > "$mcelog_result"; then
 	true
     else
 	echo "  Failed: can not get mce log from /dev/mcelog"
@@ -80,8 +79,7 @@ get_mcelog_from_klog()
     [ $# -eq 2 ] || die "missing parameter for get_mcelog_from_klog"
     local klog="$1"
     local mcelog_result="$2"
-    if [ -f "$klog" ] && extract_mce_from_log "$klog" "$mcelog_result" && \
-	[ -s "$mcelog_result" ]; then
+    if [ -f "$klog" ] && extract_mce_from_log "$klog" "$mcelog_result"; then
 	true
     else
 	echo "  Failed: Can not extract mcelog from console log"
@@ -98,6 +96,25 @@ mcelog_filter()
 	grep -e "$pat"
 }
 
+reset_gcov()
+{
+    if [ -z "$GCOV" ]; then
+	return
+    fi
+    case $GCOV in
+	copy)
+	    echo 1 > /sys/kernel/debug/gcov/reset
+	    ;;
+	dump)
+	    true;
+	    ;;
+	*)
+	    echo "  Failed: can not reset gcov, invalid GCOV=$GCOV"
+	    return
+	    ;;
+    esac
+}
+
 get_gcov()
 {
     [ $# -eq 1 ] || die "missing parameter for get_gcov"
@@ -107,25 +124,41 @@ get_gcov()
     if [ -z "$GCOV" ]; then
 	return
     fi
-    local abs_dir=$KSRC_DIR/$src_dir
+    local abs_dir=$(cd -P $KSRC_DIR/$src_dir; pwd)
     case $GCOV in
 	copy)
-	    cp /proc/gcov/$src_dir/*.gcda $abs_dir
+	    cp /sys/kernel/debug/gcov/$abs_dir/*.gcda $abs_dir
+	    cp /sys/kernel/debug/gcov/$abs_dir/*.gcno $abs_dir
 	    ;;
 	dump)
 	    true
 	    ;;
 	*)
-	    echo "  Failed: can not get gcov path, invalide GCOV=$GCOV"
+	    echo "  Failed: can not get gcov path, invalid GCOV=$GCOV"
 	    return
 	    ;;
     esac
-    if ! (cd $abs_dir; gcov $src_fn &> /dev/null) || \
-	! [ -s $abs_dir/$src_fn.gcov ]; then
+    if ! (cd $KSRC_DIR; gcov -o $src_dir $src_fn &> /dev/null) || \
+	! [ -s $KSRC_DIR/$src_fn.gcov ]; then
 	echo "  Failed: can not get gcov graph"
 	return
     fi
-    cp $abs_dir/$src_fn.gcov $RDIR/$this_case
+    cp $KSRC_DIR/$src_fn.gcov $RDIR/$this_case
+}
+
+reset_severity_cov()
+{
+    echo 1 > /sys/kernel/debug/mce/severities-coverage
+}
+
+get_severity_cov()
+{
+    local sev_cor=/sys/kernel/debug/mce/severities-coverage
+    if [ ! -f $sev_cor ]; then
+	echo "  Failed: can not get severities_coverage"
+	return
+    fi
+    cp $sev_cor $RDIR/$this_case
 }
 
 verify_klog()
@@ -169,12 +202,31 @@ verify_timeout_via_klog()
 	return -1
     fi
 
-    if grep 'Timeout waiting for other CPUs to machine check' "$klog" \
+    if grep "Some CPUs didn't answer in synchronization" "$klog" \
 	> /dev/null; then
 	echo "  Passed: timeout detected"
     else
 	echo "  Failed: no timeout detected"
     fi
+}
+
+verify_exp_via_klog()
+{
+    [ $# -ge 2 ] || die "missing parameter for verrify_exp_via_klog"
+    local klog="$1"
+    shift
+    if [ ! -f "$klog" ]; then
+	echo "  Failed: No kernel log for checking MCE exp"
+	return -1
+    fi
+
+    for exp in "$@"; do
+	if grep "Machine check: " "$klog" | grep "$exp" > /dev/null; then
+	    echo "  Passed: correct MCE exp"
+	    return
+	fi
+    done
+    echo "  Failed:  uncorrected MCE exp, expected: $exp"
 }
 
 get_panic_from_mcelog()
@@ -229,4 +281,10 @@ set_tolerant()
 get_tolerant()
 {
     cat /sys/devices/system/machinecheck/machinecheck0/tolerant
+}
+
+set_fake_panic()
+{
+    [ $# -eq 1 ] || die "missing parameter for set_fake_panic"
+    echo -n $1 > /sys/devices/system/machinecheck/machinecheck0/fake_panic
 }

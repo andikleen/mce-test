@@ -21,6 +21,13 @@ setup_path
 
 tmp_klog=$WDIR/simple_klog_tmp
 
+chk_err()
+{
+    if [ -s $err_log ]; then
+	cat $err_log
+    fi
+}
+
 klog_begin()
 {
     dmesg > $tmp_klog
@@ -47,26 +54,27 @@ klog_end()
 
 trigger()
 {
-    if [ -n "$GCOV" ]; then
-	echo 0 > /proc/gcov/vmlinux
-    fi
+    reset_gcov
 
     $CDIR/$case_sh trigger
 }
 
 get_result()
 {
-    if [ -n "$GCOV" ]; then
-	export GCOV=copy
-	export KSRC_DIR
-    fi
     $CDIR/$case_sh get_result
 }
 
 test_all()
 {
+    if [ -n "$GCOV" ]; then
+	export GCOV=copy
+	export KSRC_DIR
+    fi
+
     for case_sh in $CASES; do
 	for this_case in $($CDIR/$case_sh enumerate); do
+	    set_fake_panic 1
+
 	    export this_case
 	    mkdir -p $RDIR/$this_case
 	    rm -rf $RDIR/$this_case/*
@@ -80,9 +88,14 @@ test_all()
 	    random_sleep
 	    local before=$(klog_begin)
 	    trigger 2>$err_log | tee -a $RDIR/result
+	    chk_err
 	    klog_end $before
 	    get_result 2>$err_log | tee -a $RDIR/result
+	    chk_err
 	    $CDIR/$case_sh verify 2>$err_log | tee -a $RDIR/result
+	    chk_err
+
+	    set_fake_panic 0
 	done
     done
 }
@@ -96,7 +109,6 @@ conf=$(basename "$1")
 . $CONF_DIR/$conf
 
 driver_prepare
-set_tolerant 3
 
 if [ -n "$START_BACKGROUND" ]; then
     eval $START_BACKGROUND
@@ -111,3 +123,4 @@ if [ -n "$STOP_BACKGROUND" ]; then
 else
     stop_background
 fi
+

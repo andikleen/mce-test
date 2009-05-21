@@ -21,71 +21,97 @@ enumerate()
 
 trigger()
 {
+    reset_severity_cov
     soft_inject_trigger
-
-    if [ $ret -ne 0 ]; then
-	echo "  Failed: Failed to trigger"
-    fi
 }
 
 get_result()
 {
     soft_inject_get_klog
-    get_gcov arch/x86/kernel/cpu/mcheck/mce_64.c
-
-    case "$bcase" in
-	fatal_severity|uncorrected*|unknown|general*)
-	    soft_inject_get_mcelog
-	    ;;
-	*)
-	    echo "!!! Unknown case: $this_case !!!"
-    esac
+    get_gcov arch/x86/kernel/cpu/mcheck/mce.c
+    soft_inject_get_mcelog
+    get_severity_cov
 }
 
 verify()
 {
     local mce_panic
-    local removes="TSC"
+    local removes="TSC TIME PROCESSOR"
+    local pcc_exp="Processor context corrupt"
+    local knoripv_exp="In kernel and no restart IP"
+    local no_mcip_exp="MCIP not set in MCA handler"
+    local no_eripv_exp="Neither restart nor error IP"
+    local over_exp="Overflowed uncorrected"
+    local fatal_panic=": Fatal machine check"
+    local curr_cpu_panic=": Fatal machine check on current CPU"
+    local unknown_src_panic=": Machine check from unknown source"
     case "$bcase" in
 	fatal_severity)
-	    removes="TSC RIP"
-	    mce_panic=": Fatal machine check"
+	    removes="$removes RIP"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    soft_inject_verify_panic "$mce_panic"
+	    soft_inject_verify_panic "$fatal_panic"
+	    soft_inject_verify_exp "$pcc_exp"
 	    ;;
-	uncorrected|uncorrected_ripv)
-	    mce_panic=": Uncorrected machine check"
+	uncorrected)
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    soft_inject_verify_panic "$mce_panic"
+	    soft_inject_verify_panic "$fatal_panic"
+	    soft_inject_verify_exp "$knoripv_exp"
 	    ;;
 	uncorrected_timeout*)
-	    mce_panic=": Uncorrected machine check"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    soft_inject_verify_panic "$mce_panic"
+	    soft_inject_verify_panic "$curr_cpu_panic"
+	    soft_inject_verify_timeout
+	    soft_inject_verify_exp "$knoripv_exp"
+	    ;;
+	uc_no_mcip)
+	    removes="$removes RIP"
+	    soft_inject_verify_mcelog
+	    verify_klog $klog
+	    soft_inject_verify_panic "$fatal_panic"
+	    soft_inject_verify_exp "$no_mcip_exp"
+	    ;;
+	uc_no_mcip_timeout)
+	    removes="$removes RIP"
+	    soft_inject_verify_mcelog
+	    verify_klog $klog
+	    soft_inject_verify_panic "$curr_cpu_panic"
+	    soft_inject_verify_exp "$no_mcip_exp"
 	    soft_inject_verify_timeout
 	    ;;
-	general)
-	    removes="TSC RIP"
-	    mce_panic=": Machine check"
+	uc_no_eripv)
+	    removes="$removes RIP"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    soft_inject_verify_panic "$mce_panic"
+	    soft_inject_verify_panic "$fatal_panic"
+	    soft_inject_verify_exp "$no_eripv_exp"
 	    ;;
-	general_timeout)
-	    removes="TSC RIP"
-	    mce_panic=": Machine check"
+	uc_no_eripv_timeout)
+	    removes="$removes RIP"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    soft_inject_verify_panic "$mce_panic"
+	    soft_inject_verify_panic "$curr_cpu_panic"
+	    soft_inject_verify_exp "$no_eripv_exp"
+	    soft_inject_verify_timeout
+	    ;;
+	uc_over)
+	    soft_inject_verify_mcelog
+	    verify_klog $klog
+	    soft_inject_verify_panic "$fatal_panic"
+	    soft_inject_verify_exp "$over_exp"
+	    ;;
+	uc_over_timeout)
+	    soft_inject_verify_mcelog
+	    verify_klog $klog
+	    soft_inject_verify_panic "$curr_cpu_panic"
+	    soft_inject_verify_exp "$over_exp"
 	    soft_inject_verify_timeout
 	    ;;
 	unknown)
-	    mce_panic=": Machine check from unknown source"
 	    verify_klog $klog
-	    soft_inject_verify_panic "$mce_panic"
+	    soft_inject_verify_panic "$unk_panic"
 	    ;;
 	*)
 	    echo "!!! Unknown case: $this_case !!!"

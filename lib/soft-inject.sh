@@ -82,8 +82,15 @@ soft_inject_enumerate()
 soft_inject_trigger()
 {
     mcelog &> /dev/null
-    inject $SDIR/data/$bcase
-    local ret=$?
+    case "$driver" in
+	kdump*)
+	    inject --no-random $SDIR/data/$bcase
+	    ;;
+	*)
+	    inject $SDIR/data/$bcase
+	    ;;
+    esac
+    ret=$?
     echo $ret > $RDIR/$this_case/return
     sleep 1
 }
@@ -91,32 +98,17 @@ soft_inject_trigger()
 soft_inject_verify_panic()
 {
     local mce_panic="$1"
-    local panicf=$RDIR/$this_case/panic
-    case "$driver" in
-	simple*)
-	    get_panic_from_mcelog $mcelog_result > $panicf
-	    verify_panic_msg "$(cat $panicf)" "$mce_panic"
-	    ;;
-	kdump*)
-	    verify_panic_via_klog $klog "$mce_panic"
-	    ;;
-	*)
-	    echo '!!! Unsupported driver !!!'
-    esac
+    verify_panic_via_klog $klog "$mce_panic"
 }
 
 soft_inject_verify_timeout()
 {
-    case "$driver" in
-	simple*)
-	    verify_timeout_via_mcelog $mcelog_result
-	    ;;
-	kdump*)
-	    verify_timeout_via_klog $klog
-	    ;;
-	*)
-	    echo '!!! Unsupported driver !!!'
-    esac
+    verify_timeout_via_klog $klog
+}
+
+soft_inject_verify_exp()
+{
+    verify_exp_via_klog $klog "$@"
 }
 
 soft_inject_main()

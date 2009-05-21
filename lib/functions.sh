@@ -31,7 +31,8 @@ relative_path()
 
 die()
 {
-    echo "$@" 1>&2
+    echo "DIE: $@"
+    echo "DIE: $@" 1>&2
     exit -1
 }
 
