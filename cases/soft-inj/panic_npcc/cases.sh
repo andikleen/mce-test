@@ -43,7 +43,7 @@ verify()
     local no_eripv_exp="Neither restart nor error IP"
     local over_exp="Overflowed uncorrected"
     local fatal_panic=": Fatal machine check"
-    local general_panic=": Machine check"
+    local curr_cpu_panic=": Fatal machine check on current CPU"
     local unknown_src_panic=": Machine check from unknown source"
     case "$bcase" in
 	fatal_severity)
@@ -62,7 +62,7 @@ verify()
 	uncorrected_timeout*)
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    soft_inject_verify_panic "$general_panic"
+	    soft_inject_verify_panic "$curr_cpu_panic"
 	    soft_inject_verify_timeout
 	    soft_inject_verify_exp "$knoripv_exp"
 	    ;;
@@ -77,7 +77,7 @@ verify()
 	    removes="$removes RIP"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    soft_inject_verify_panic "$general_panic"
+	    soft_inject_verify_panic "$curr_cpu_panic"
 	    soft_inject_verify_exp "$no_mcip_exp"
 	    soft_inject_verify_timeout
 	    ;;
@@ -92,7 +92,7 @@ verify()
 	    removes="$removes RIP"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    soft_inject_verify_panic "$general_panic"
+	    soft_inject_verify_panic "$curr_cpu_panic"
 	    soft_inject_verify_exp "$no_eripv_exp"
 	    soft_inject_verify_timeout
 	    ;;
@@ -105,7 +105,7 @@ verify()
 	uc_over_timeout)
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    soft_inject_verify_panic "$general_panic"
+	    soft_inject_verify_panic "$curr_cpu_panic"
 	    soft_inject_verify_exp "$over_exp"
 	    soft_inject_verify_timeout
 	    ;;

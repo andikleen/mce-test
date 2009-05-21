@@ -43,7 +43,7 @@ get_result()
 verify()
 {
     local removes="TSC TIME PROCESSOR"
-    local general_panic="Machine check"
+    local curr_cpu_panic=": Fatal machine check on current CPU"
     local fatal_panic="Fatal machine check"
     local pcc_exp="Processor context corrupt"
     case "$bcase" in
@@ -70,14 +70,14 @@ verify()
 	    removes="$removes RIP"
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    soft_inject_verify_panic "$general_panic"
+	    soft_inject_verify_panic "$curr_cpu_panic"
 	    soft_inject_verify_timeout
 	    soft_inject_verify_exp "$pcc_exp"
 	    ;;
 	fatal_timeout_ripv)
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
-	    soft_inject_verify_panic "$general_panic"
+	    soft_inject_verify_panic "$curr_cpu_panic"
 	    soft_inject_verify_timeout
 	    soft_inject_verify_exp "$pcc_exp"
 	    ;;
