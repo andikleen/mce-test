@@ -2,6 +2,7 @@
  * Test program for Linux poison memory error recovery. 
  * This injects poison into various mapping cases and triggers the poison
  * handling.  Requires special injection support in the kernel.
+ * Author: Andi Kleen
  */
 #define _GNU_SOURCE 1
 #include <stdio.h>
@@ -36,6 +37,7 @@
 
 int PS;
 int failure; 
+int unexpected;
 
 void *checked_mmap(void *start, size_t length, int prot, int flags,
                    int fd, off_t offset)
@@ -136,6 +138,15 @@ void expecterr(char *msg, int res)
 		printf("unexpected no error on %s\n", msg);
 	} else
 		printf("expected error %d on %s\n", errno, msg);
+}
+
+void optionalerr(char *msg, int res)
+{
+	if (res == 0) { 
+		unexpected++;
+		printf("expected likely incorrect no error on %s\n", msg);
+	} else
+		printf("expected optional error %d on %s\n", errno, msg);
 }
 
 static int tmpcount;
@@ -256,8 +267,8 @@ static void file_hole(void)
 	page = checked_mmap(NULL, PS, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 	*page = 1;
 	testmem("hole file dirty", page, MREAD);
-	expecterr("hole msync expect error", msync(page, PS, MS_SYNC));
 	expecterr("hole fsync expect error", fsync(fd));
+	optionalerr("hole msync expect error", msync(page, PS, MS_SYNC));
 	close(fd);
 }
 
@@ -284,8 +295,8 @@ static void nonlinear(void)
 	}
 	*page = 1;
 	testmem("rfp file dirty", page, MREAD);
-	expecterr("rfp msync expect error", msync(page, PS, MS_SYNC));
 	expecterr("rfp fsync expect error", fsync(fd));
+	optionalerr("rfp msync expect error", msync(page, PS, MS_SYNC));
 	close(fd);
 }
 
