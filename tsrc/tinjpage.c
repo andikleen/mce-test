@@ -203,8 +203,11 @@ static void clean_file(void)
 	if (fd < 0) 
 		err("open temp file");
 	page = checked_mmap(NULL, PS, PROT_READ, MAP_SHARED|MAP_POPULATE, fd, 0);
-	close(fd);
 	testmem("clean file", page, MREAD);
+	fsync(fd);
+	page = checked_mmap(NULL, PS, PROT_READ, MAP_SHARED|MAP_POPULATE, fd, 0);
+     	close(fd);
+	testmem("clean file 2", page, MREAD);
 }
 
 static void file_dirty(void)
