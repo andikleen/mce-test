@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # Software injection based test cases: test cases are triggered via
-# bin/inject tool.
+# the mce-inject tool.
 #
 # Copyright (C) 2008, Intel Corp.
 #   Author: Huang Ying <ying.huang@intel.com>
