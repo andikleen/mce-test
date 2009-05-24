@@ -84,10 +84,10 @@ soft_inject_trigger()
     mcelog &> /dev/null
     case "$driver" in
 	kdump*)
-	    inject --no-random $SDIR/data/$bcase
+	    mce-inject --no-random $SDIR/data/$bcase
 	    ;;
 	*)
-	    inject $SDIR/data/$bcase
+	    mce-inject $SDIR/data/$bcase
 	    ;;
     esac
     ret=$?

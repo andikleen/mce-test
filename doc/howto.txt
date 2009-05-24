@@ -29,12 +29,11 @@ sudo make install
 
 - Get mce-inject git version from
 git://git.kernel.org/pub/scm/utils/cpu/mce/mce-inject.git.
-and install in 
 
 git clone git://git.kernel.org/pub/scm/utils/cpu/mce/mce-inject.git
 cd mce-inject
 make
-sudo cp inject /usr/sbin	(or somewhere in your $PATH)
+sudo make install
 
 - Run make test-simple
 This will do the basic tests, but not the more complicated kdump ones.
@@ -181,7 +180,7 @@ kernel via mce-inject, a data file should be provided. The syntax is
 similar to the logging output by mcelog with some extensions. 
 Please refer to the documentation of mce-inject for more information.
 
-The inject program must be executable in $PATH.
+The mce-inject program must be executable in $PATH.
 
 3.2 mcelog
 
@@ -239,7 +238,8 @@ instructions.
 a. Linux kernel and user space tools as follow should be installed
 
    - A Linux kernel with MCE injection support. Latest Linux kernel
-     MCE injection patches can be found at: FIXME url.
+     MCE injection patches can be found at:
+     git://git.kernel.org/pub/scm/linux/kernel/git/ak/linux-mce-2.6.git
    - mce-inject tool (see 3.1)
    - mcelog with proper version (see 3.2)
 

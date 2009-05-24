@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # Software injection based test cases - non-panic cases: test cases
-# are triggered via bin/inject tool, and they will not trigger kernel
+# are triggered via the mce-inject tool, and they will not trigger kernel
 # panic.
 #
 # Copyright (C) 2008, Intel Corp.

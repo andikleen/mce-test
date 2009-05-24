@@ -23,7 +23,7 @@ mce_reformat()
     local org="$1"
     local outf="$2"
 
-    inject --dump "$org" > "$outf"
+    mce-inject --dump "$org" > "$outf"
 }
 
 mce_reformat_for_cmp()
@@ -34,7 +34,7 @@ mce_reformat_for_cmp()
 
     local tmpf=$WDIR/mce_reformat_for_cmp
 
-    inject --dump "$inf" > $tmpf
+    mce-inject --dump "$inf" > $tmpf
 
     if [ -n "$removes" ]; then
 	for remove in $removes; do
@@ -92,7 +92,7 @@ mcelog_filter()
     local inf="$1"
     local pat="$2"
 
-    inject --dump "$inf" | tr '\n' '#' | sed '1,$s/##/\n/g' | \
+    mce-inject --dump "$inf" | tr '\n' '#' | sed '1,$s/##/\n/g' | \
 	grep -e "$pat"
 }
 
