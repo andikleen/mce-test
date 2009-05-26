@@ -1,5 +1,6 @@
 /* 
  * Print table of MCA status bit combinations with results in HTML.
+ * Author: Andi Kleen
  */
 #define _GNU_SOURCE 1
 #include <stdio.h>

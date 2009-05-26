@@ -63,6 +63,16 @@ soft_inject_get_mcelog()
 soft_inject_verify_return_val()
 {
     if [ -f $RDIR/$this_case/return ] && \
+	[ $(cat $RDIR/$this_case/return) -eq 0 ]; then
+	echo "  Passed: inject process continue"
+    else
+	echo "  Failed: inject process killed"
+    fi
+}
+
+soft_inject_verify_kill()
+{
+    if [ -f $RDIR/$this_case/return ] && \
 	[ $(cat $RDIR/$this_case/return) -eq 139 ]; then
 	echo "  Passed: inject process killed!"
     else

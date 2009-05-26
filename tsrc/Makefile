@@ -1,6 +1,7 @@
 LSRC := ../linux
+BROWSER := links -g
 
-CFLAGS += -I ../linux/arch/x86/kernel/cpu/mcheck/ -g -Wall
+CFLAGS += -I ${LSRC}/arch/x86/kernel/cpu/mcheck/ -g -Wall
 
 all: tcases tinjpage tkillpoison ttable
 
@@ -16,7 +17,7 @@ x.html: ttable
 .PHONY: see
 
 see: x.html
-	links -g x.html
+	${BROWSER} x.html
 
 tinjpage: LDFLAGS += -lpthread
 
