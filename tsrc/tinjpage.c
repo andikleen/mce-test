@@ -300,13 +300,6 @@ static void nonlinear(void)
 	close(fd);
 }
 
-static void anon_hole(void)
-{
-	char *page;
-	page = checked_mmap(NULL, PS, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0, 0);
-	testmem("anonymous hole", page, MWRITE);
-}
-
 /* 
  * This is quite timing dependent. The sniper might hit the page
  * before it is dirtied. If that happens tweak the delay
@@ -393,7 +386,6 @@ struct testcase {
 	{ file_dirty, "file dirty" },
 	{ file_hole, "file hole" },
 	{ nonlinear, "nonlinear" },
-	{ anon_hole, "anonymous hole" },
 	{ under_io_dirty, "under io dirty" },
 	{ under_io_clean, "under io clean" },
 	{}
