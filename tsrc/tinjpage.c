@@ -413,6 +413,9 @@ int main(void)
 {
 	PS = getpagesize();
 
+	/* don't kill me at poison time, but possibly at page fault time */
+	system("sysctl -w vm.memory_failure_early_kill=0");
+
 	struct sigaction sa = { 	
 		.sa_sigaction = sighandler,
 		.sa_flags = SA_SIGINFO
