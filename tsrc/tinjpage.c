@@ -222,9 +222,11 @@ static void file_clean(void)
 	char *page;
 	char fn[30];
 	snprintf(fn, 30, TMPDIR "test%d", tmpcount++);
-	int fd = open(fn, O_RDWR|O_CREAT);
+	int fd = open(fn, O_RDWR|O_TRUNC|O_CREAT);
 	if (fd < 0)
 		err("open temp file");
+	write(fd, fn, 4);
+	fsync(fd);
 	page = checked_mmap(NULL, PS, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_POPULATE, fd, 0);
 	close(fd);
 	testmem("file clean", page, MREAD_OK);
