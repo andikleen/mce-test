@@ -1,6 +1,7 @@
 
 all:
 	$(MAKE) -C tools
+	$(MAKE) -C tsrc
 
 clean:
 	$(MAKE) -C tools clean
