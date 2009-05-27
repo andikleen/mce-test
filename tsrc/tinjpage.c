@@ -69,7 +69,7 @@ void *expected_addr;
 void sighandler(int sig, siginfo_t *si, void *arg)
 {
 	if (si->si_addr != expected_addr) {
-		printf("Unexpected address in signal %p (expected %p)\n", si->si_addr,
+		printf("XXX: Unexpected address in signal %p (expected %p)\n", si->si_addr,
 			expected_addr);
 		failure++;
 	}
@@ -117,7 +117,7 @@ void recover(char *msg, char *page, enum rmode mode)
 			return;
 		}
 		/* signal or kill should have happened */
-		printf("%s: page not poisoned after injection\n", msg);
+		printf("XXX: %s: page not poisoned after injection\n", msg);
 		failure++;
 		return;
 	}
@@ -135,7 +135,7 @@ void expecterr(char *msg, int res)
 {
 	if (res == 0) { 
 		failure++;
-		printf("unexpected no error on %s\n", msg);
+		printf("XXX: unexpected no error on %s\n", msg);
 	} else
 		printf("expected error %d on %s\n", errno, msg);
 }
@@ -144,7 +144,7 @@ void optionalerr(char *msg, int res)
 {
 	if (res == 0) { 
 		unexpected++;
-		printf("expected likely incorrect no error on %s\n", msg);
+		printf("XXX: expected likely incorrect no error on %s\n", msg);
 	} else
 		printf("expected optional error %d on %s\n", errno, msg);
 }
@@ -422,7 +422,7 @@ int main(void)
 				perror("waitid");
 			else { 
 				if (sig.si_code != CLD_KILLED || sig.si_status != SIGBUS) {
-					printf("%s: child not killed by SIGBUS\n", t->name);
+					printf("XXX: %s: child not killed by SIGBUS\n", t->name);
 					failure++;
 				}
 			}
