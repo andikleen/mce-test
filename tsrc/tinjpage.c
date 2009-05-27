@@ -130,7 +130,7 @@ void recover(char *msg, char *page, enum rmode mode)
 		return;
 	}
 	if (mode == MREAD_OK || mode == MWRITE_OK) {
-		printf("F: %s: not recovered\n", msg);
+		printf("XXX: %s: not recovered\n", msg);
 		failure++;
 	} else
 		printf("recovered\n");
@@ -265,7 +265,7 @@ static void file_dirty(void)
 	char buf[128];
 	expecterr("explicit read after poison", read(fd, buf, sizeof buf));
 	expecterr("explicit write after poison", write(fd, "foobar", 6));
-	expecterr("fsync expect error", fsync(fd));
+	optionalerr("fsync expect error", fsync(fd));
 	close(fd);
 
 	/* should unlink return an error here? */
