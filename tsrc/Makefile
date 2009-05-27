@@ -21,9 +21,12 @@ see: x.html
 
 tinjpage: LDFLAGS += -lpthread
 
-.PHONY: clean
+.PHONY: clean distclean
 
 clean:
 	rm -f tcases ttable x.html tinjpage	
 	rm -f tkillpoison tring
+
+distclean: clean
+
 

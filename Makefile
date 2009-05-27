@@ -4,10 +4,12 @@ all:
 
 clean:
 	$(MAKE) -C tools clean
+	$(MAKE) -C tsrc clean
 	$(MAKE) reset
 
 distclean:
 	$(MAKE) -C tools distclean
+	$(MAKE) -C tsrc distclean
 	$(MAKE) reset
 
 reset:
