@@ -437,7 +437,7 @@ int main(void)
 			_exit(1);
 		} else { 
 			siginfo_t sig;
-			if (waitid(P_PID, child, &sig, 0) < 0)
+			if (waitid(P_PID, child, &sig, WEXITED) < 0)
 				perror("waitid");
 			else { 
 				if (t->survivable) {
