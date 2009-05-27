@@ -403,8 +403,8 @@ struct testcase {
 	{ file_dirty, "file dirty" },
 	{ file_hole, "file hole" },
 	{ nonlinear, "nonlinear" },
-	{ under_io_dirty, "under io dirty" },
-	{ under_io_clean, "under io clean" },
+	/* { under_io_dirty, "under io dirty" }, */
+	/* { under_io_clean, "under io clean" }, */
 	{}
 };
 	
