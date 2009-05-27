@@ -242,9 +242,9 @@ static void file_dirty(void)
 	int fd = playfile(fn);
 
 	page = checked_mmap(NULL, PS, PROT_READ, MAP_SHARED|MAP_POPULATE, fd, 0);
-	close(fd);
 	testmem("dirty file initial", page, MREAD);
 	expecterr("msync expect error", msync(page, PS, MS_SYNC));
+	close(fd);
 	munmap_reserve(page, PS);
 
 	fd = open(fn, O_RDONLY);
