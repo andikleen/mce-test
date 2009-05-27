@@ -98,6 +98,8 @@ void poison(char *page)
 enum rmode { 
 	MREAD = 0,
 	MWRITE = 1,
+	MREAD_OK = 2,
+	MWRITE_OK = 3,
 	MNOTHING = -1,
 };
 
@@ -110,9 +112,15 @@ void recover(char *msg, char *page, enum rmode mode)
 		case MWRITE:
 			*page = 2;
 			break;
-		case MREAD: 
-			printf("%x\n", *(unsigned char *)page);	
+		case MWRITE_OK:
+			*page = 4;
+			return;
+		case MREAD:
+			printf("%x\n", *(unsigned char *)page);
 			break;
+		case MREAD_OK:
+			printf("%x\n", *(unsigned char *)page);
+			return;
 		case MNOTHING:
 			return;
 		}
@@ -121,7 +129,11 @@ void recover(char *msg, char *page, enum rmode mode)
 		failure++;
 		return;
 	}
-	printf("recovered\n");
+	if (mode == MREAD_OK || mode == MWRITE_OK) {
+		printf("F: %s: not recovered\n", msg);
+		failure++;
+	} else
+		printf("recovered\n");
 }
 
 void testmem(char *msg, char *page, enum rmode mode)
@@ -205,17 +217,19 @@ static void mlocked_anonymous(void)
 	testmem("mlocked", page, MWRITE);
 }
 
-static void clean_file(void)
+static void file_clean(void)
 {
 	char *page;
 	char fn[30];
 	snprintf(fn, 30, TMPDIR "test%d", tmpcount++);
 	int fd = open(fn, O_RDWR|O_CREAT);
-	if (fd < 0) 
+	if (fd < 0)
 		err("open temp file");
-	page = checked_mmap(NULL, PS, PROT_READ, MAP_SHARED|MAP_POPULATE, fd, 0);
+	page = checked_mmap(NULL, PS, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_POPULATE, fd, 0);
 	close(fd);
-	testmem("clean file", page, MREAD);
+	testmem("file clean", page, MREAD_OK);
+	printf("%x\n", *(unsigned char *)page); /* reread page from disk */
+	testmem("file clean", page, MWRITE_OK);
 }
 
 static void file_dirty(void)
@@ -234,14 +248,14 @@ static void file_dirty(void)
 	fd = open(fn, O_RDONLY);
 	if (fd < 0) err("reopening temp file");
 	page = checked_mmap(NULL, PS, PROT_READ, MAP_SHARED|MAP_POPULATE, fd, 0);
-	recover("dirty file populated", page, MREAD);
+	recover("dirty file populated", page, MREAD_OK);
 	close(fd);
 	munmap_reserve(page, PS);
 
 	fd = open(fn, O_RDONLY);
 	if (fd < 0) err("reopening temp file");
 	page = checked_mmap(NULL, PS, PROT_READ, MAP_SHARED, fd, 0);
-	recover("dirty file fault", page, MREAD);
+	recover("dirty file fault", page, MREAD_OK);
 	close(fd);
 	munmap_reserve(page, PS);
 	
@@ -378,11 +392,12 @@ static void under_io_clean(void)
 struct testcase {
 	void (*f)(void);
 	char *name;
+	int survivable;
 } cases[] = { 
 	{ dirty_anonymous, "dirty anonymous" },
 	{ dirty_anonymous_unmap, "dirty anonymous unmap" },
 	{ mlocked_anonymous, "mlocked anonymous" },
-	{ clean_file, "clean file" },
+	{ file_clean, "file clean", 1 },
 	{ file_dirty, "file dirty" },
 	{ file_hole, "file hole" },
 	{ nonlinear, "nonlinear" },
@@ -413,6 +428,8 @@ int main(void)
 		if (child == 0) { 
 			signal(SIGBUS, SIG_DFL);
 			t->f();
+			if (t->survivable)
+				_exit(2);
 			write(1, t->name, strlen(t->name));
 			write(1, PAIR(" didn't kill itself?\n"));
 			_exit(1);
@@ -421,9 +438,16 @@ int main(void)
 			if (waitid(P_PID, child, &sig, 0) < 0)
 				perror("waitid");
 			else { 
-				if (sig.si_code != CLD_KILLED || sig.si_status != SIGBUS) {
-					printf("XXX: %s: child not killed by SIGBUS\n", t->name);
-					failure++;
+				if (t->survivable) {
+					if (sig.si_code != CLD_EXITED) {
+						printf("XXX: %s: child not survived\n", t->name);
+						failure++;
+					}
+				} else {
+					if (sig.si_code != CLD_KILLED || sig.si_status != SIGBUS) {
+						printf("XXX: %s: child not killed by SIGBUS\n", t->name);
+						failure++;
+					}
 				}
 			}
 		}
