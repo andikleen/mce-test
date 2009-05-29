@@ -38,6 +38,7 @@
 int PS;
 int failure;
 int unexpected;
+int early_kill;
 
 void *checked_mmap(void *start, size_t length, int prot, int flags,
                    int fd, off_t offset)
@@ -64,6 +65,7 @@ void *xmalloc(size_t s)
 
 int recovercount;
 sigjmp_buf recover_ctx;
+sigjmp_buf early_recover_ctx;
 void *expected_addr;
 
 void sighandler(int sig, siginfo_t *si, void *arg)
@@ -81,21 +83,13 @@ void sighandler(int sig, siginfo_t *si, void *arg)
 		exit(1);
 	}
 
-	siglongjmp(recover_ctx, 1);
+	if (si->si_code == 4)
+		siglongjmp(recover_ctx, 1);
+	else
+		siglongjmp(early_recover_ctx, 1);
 }
 
-void poison(char *page)
-{
-	if (madvise(page, PS, MADV_POISON) != 0) { 
-		if (errno == EINVAL) {
-			printf("Kernel doesn't support poison injection\n");
-			exit(0);
-		}
-		Perror("madvise");
-	}
-}
-
-enum rmode { 
+enum rmode {
 	MREAD = 0,
 	MWRITE = 1,
 	MREAD_OK = 2,
@@ -103,16 +97,52 @@ enum rmode {
 	MNOTHING = -1,
 };
 
+void poison(char *msg, char *page, enum rmode mode)
+{
+	expected_addr = page;
+	recovercount = 5;
+
+	if (sigsetjmp(early_recover_ctx, 1) == 0) {
+
+		if (madvise(page, PS, MADV_POISON) != 0) {
+			if (errno == EINVAL) {
+				printf("Kernel doesn't support poison injection\n");
+				exit(0);
+			}
+			Perror("madvise");
+			return;
+		}
+
+		if (early_kill && (mode == MWRITE || mode == MREAD)) {
+			printf("XXX: %s: process is not early killed\n", msg);
+			failure++;
+		}
+
+		return;
+	}
+
+	if (early_kill) {
+		if (mode == MREAD_OK || mode == MWRITE_OK) {
+			printf("XXX: %s: killed\n", msg);
+			failure++;
+		} else
+			printf("recovered\n");
+	}
+}
+
 void recover(char *msg, char *page, enum rmode mode)
 {
 	expected_addr = page;
 	recovercount = 5;
+
 	if (sigsetjmp(recover_ctx, 1) == 0) {
 		switch (mode) {
 		case MWRITE:
+			printf("writing 2\n");
 			*page = 2;
 			break;
 		case MWRITE_OK:
+			printf("writing 4\n");
 			*page = 4;
 			return;
 		case MREAD:
@@ -130,7 +160,7 @@ void recover(char *msg, char *page, enum rmode mode)
 		return;
 	}
 	if (mode == MREAD_OK || mode == MWRITE_OK) {
-		printf("XXX: %s: not recovered\n", msg);
+		printf("XXX: %s: killed\n", msg);
 		failure++;
 	} else
 		printf("recovered\n");
@@ -139,7 +169,7 @@ void recover(char *msg, char *page, enum rmode mode)
 void testmem(char *msg, char *page, enum rmode mode)
 {
 	printf("%s page %p\n", msg, page);
-	poison(page); 
+	poison(msg, page, mode);
 	recover(msg, page, mode);
 }
 
@@ -316,7 +346,7 @@ static void nonlinear(void)
 	close(fd);
 }
 
-/* 
+/*
  * This is quite timing dependent. The sniper might hit the page
  * before it is dirtied. If that happens tweak the delay
  * (should auto tune)
@@ -335,37 +365,51 @@ void waitfor(enum sstate w, enum sstate s)
 		cpu_relax();
 }
 
-void *sniper(void *arg)
+struct poison_arg {
+	char *msg;
+	char *page;
+	enum rmode mode;
+};
+
+void *sniper(void *p)
 {
+	struct poison_arg *arg = p;
+
 	waitfor(WAITING, SNIPE);
-	nanosleep(&((struct timespec) {  .tv_nsec = DELAY_NS }), NULL);
-	poison(arg);
+	nanosleep(&((struct timespec) { .tv_nsec = DELAY_NS }), NULL);
+	poison(arg->msg, arg->page, arg->mode);
 	return NULL;
 }
 
-int setup_sniper(char *name, char *page)
+int setup_sniper(struct poison_arg *arg)
 {
 	if (sysconf(_SC_NPROCESSORS_ONLN) < 2)  {
-		printf("%s: Need at least two CPUs. Not tested\n", name);
+		printf("%s: Need at least two CPUs. Not tested\n", arg->msg);
 		return -1;
 	}
 	sstate = START;
 	mb();
 	pthread_t thr;
-	if (pthread_create(&thr, NULL, sniper, page) < 0)
+	if (pthread_create(&thr, NULL, sniper, arg) < 0)
 		err("pthread_create");
-	pthread_detach(thr);	
+	pthread_detach(thr);
 	return 0;
 }
 
 static void under_io_dirty(void)
 {
+	struct poison_arg arg;
 	int fd = tempfd();
 	char *page;
 
 	page = checked_mmap(NULL, PS, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_POPULATE, fd, 0);
-	if (setup_sniper("under io dirty", page) < 0)
+
+	arg.page = page;
+	arg.msg  = "under io dirty";
+	arg.mode = MWRITE;
+	if (setup_sniper(&arg) < 0)
 		return;
+
 	waitfor(WAITING, SNIPE);
 	expecterr("write under io", write(fd, "xyz", 3));
 	close(fd);
@@ -373,6 +417,7 @@ static void under_io_dirty(void)
 
 static void under_io_clean(void)
 {
+	struct poison_arg arg;
 	char fn[PATHBUFLEN];
 	int fd;
 	char *page;
@@ -381,8 +426,13 @@ static void under_io_clean(void)
  	fd = playfile(fn);
 	page = checked_mmap(NULL, PS, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_POPULATE, fd, 0);
 	madvise(page, PS, MADV_DONTNEED);
-	if (setup_sniper("under io clean", page) < 0)
+
+	arg.page = page;
+	arg.msg  = "under io clean";
+	arg.mode = MREAD_OK;
+	if (setup_sniper(&arg) < 0)
 		return;
+
 	waitfor(WAITING, SNIPE);
 	// what is correct here?
 	if (pread(fd, buf, 10, 0) != 0)
@@ -414,6 +464,7 @@ int main(void)
 	PS = getpagesize();
 
 	/* don't kill me at poison time, but possibly at page fault time */
+	early_kill = 0;
 	system("sysctl -w vm.memory_failure_early_kill=0");
 
 	struct sigaction sa = {
@@ -457,6 +508,14 @@ int main(void)
 			}
 		}
 	}
+
+	/* early kill version */
+	early_kill = 1;
+	system("sysctl -w vm.memory_failure_early_kill=1");
+
+	sigaction(SIGBUS, &sa, NULL);
+	for (t = cases; t->f; t++)
+		t->f();
 
 	if (failure > 0) {
 		printf("FAILURE -- %d cases broken!\n", failure);
