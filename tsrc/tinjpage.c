@@ -1,5 +1,5 @@
-/* 
- * Test program for Linux poison memory error recovery. 
+/*
+ * Test program for Linux poison memory error recovery.
  * This injects poison into various mapping cases and triggers the poison
  * handling.  Requires special injection support in the kernel.
  * Author: Andi Kleen
@@ -29,14 +29,14 @@
 #define Perror(x) failure++, perror(x)
 #define PAIR(x) x, sizeof(x)-1
 #define mb() asm volatile("" ::: "memory")
-#if defined(__i386__) || defined(__x86_64__) 
+#if defined(__i386__) || defined(__x86_64__)
 #define cpu_relax() asm volatile("rep ; nop" ::: "memory")
 #else
 #define cpu_relax() mb()
 #endif
 
 int PS;
-int failure; 
+int failure;
 int unexpected;
 
 void *checked_mmap(void *start, size_t length, int prot, int flags,
@@ -76,7 +76,7 @@ void sighandler(int sig, siginfo_t *si, void *arg)
 
 	printf("signal %d code %d addr %p\n", sig, si->si_code, si->si_addr);
 
-	if (--recovercount == 0) { 
+	if (--recovercount == 0) {
 		write(1, PAIR("I seem to be in a signal loop. bailing out.\n"));
 		exit(1);
 	}
@@ -108,7 +108,7 @@ void recover(char *msg, char *page, enum rmode mode)
 	expected_addr = page;
 	recovercount = 5;
 	if (sigsetjmp(recover_ctx, 1) == 0) {
-		switch (mode) { 
+		switch (mode) {
 		case MWRITE:
 			*page = 2;
 			break;
@@ -145,7 +145,7 @@ void testmem(char *msg, char *page, enum rmode mode)
 
 void expecterr(char *msg, int res)
 {
-	if (res == 0) { 
+	if (res == 0) {
 		failure++;
 		printf("XXX: unexpected no error on %s\n", msg);
 	} else
@@ -154,7 +154,7 @@ void expecterr(char *msg, int res)
 
 void optionalerr(char *msg, int res)
 {
-	if (res == 0) { 
+	if (res == 0) {
 		unexpected++;
 		printf("XXX: expected likely incorrect no error on %s\n", msg);
 	} else
@@ -178,10 +178,10 @@ int tempfd(void)
 int playfile(char *buf)
 {
 	int fd;
-	if (buf[0] == 0) 
+	if (buf[0] == 0)
 		snprintf(buf, PATHBUFLEN, TMPDIR "poison%d", tmpcount++);
 	fd = open(buf, O_CREAT|O_RDWR|O_TRUNC, 0600);
-	if (fd < 0) 
+	if (fd < 0)
 		err("opening temporary file in " TMPDIR);
 
 	const int NPAGES = 5;
@@ -190,9 +190,9 @@ int playfile(char *buf)
 	for (i = 0; i < PS*NPAGES; i++)
 		tmp[i] = i;
 	write(fd, tmp, PS*NPAGES);
-	
+
 	lseek(fd, 0, SEEK_SET);
-	return fd;	
+	return fd;
 }
 
 static void dirty_anonymous(void)
@@ -260,7 +260,7 @@ static void file_dirty(void)
 	recover("dirty file fault", page, MREAD_OK);
 	close(fd);
 	munmap_reserve(page, PS);
-	
+
 	fd = open(fn, O_RDONLY);
 	char buf[128];
 	expecterr("explicit read after poison", read(fd, buf, sizeof buf));
@@ -269,7 +269,7 @@ static void file_dirty(void)
 	close(fd);
 
 	/* should unlink return an error here? */
-	if (unlink(fn) < 0) 
+	if (unlink(fn) < 0)
 		perror("unlink");
 }
 
@@ -395,7 +395,7 @@ struct testcase {
 	void (*f)(void);
 	char *name;
 	int survivable;
-} cases[] = { 
+} cases[] = {
 	{ dirty_anonymous, "dirty anonymous" },
 	{ dirty_anonymous_unmap, "dirty anonymous unmap" },
 	{ mlocked_anonymous, "mlocked anonymous" },
@@ -407,7 +407,7 @@ struct testcase {
 	/* { under_io_clean, "under io clean" }, */
 	{}
 };
-	
+
 
 int main(void)
 {
@@ -416,7 +416,7 @@ int main(void)
 	/* don't kill me at poison time, but possibly at page fault time */
 	system("sysctl -w vm.memory_failure_early_kill=0");
 
-	struct sigaction sa = { 	
+	struct sigaction sa = {
 		.sa_sigaction = sighandler,
 		.sa_flags = SA_SIGINFO
 	};
@@ -430,7 +430,7 @@ int main(void)
 	/* suicide version */
 	for (t = cases; t->f; t++) {
 		pid_t child = fork();
-		if (child == 0) { 
+		if (child == 0) {
 			signal(SIGBUS, SIG_DFL);
 			t->f();
 			if (t->survivable)
@@ -438,11 +438,11 @@ int main(void)
 			write(1, t->name, strlen(t->name));
 			write(1, PAIR(" didn't kill itself?\n"));
 			_exit(1);
-		} else { 
+		} else {
 			siginfo_t sig;
 			if (waitid(P_PID, child, &sig, WEXITED) < 0)
 				perror("waitid");
-			else { 
+			else {
 				if (t->survivable) {
 					if (sig.si_code != CLD_EXITED) {
 						printf("XXX: %s: child not survived\n", t->name);
@@ -462,8 +462,6 @@ int main(void)
 		printf("FAILURE -- %d cases broken!\n", failure);
 		return 1;
 	}
-	printf("SUCCESS\n"); 
+	printf("SUCCESS\n");
 	return 0;
-}	
-
-
+}
