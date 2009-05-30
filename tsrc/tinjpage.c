@@ -355,7 +355,7 @@ enum {
 	DELAY_NS = 30,
 };
 
-volatile enum sstate { START, WAITING, SNIPE } sstate = START;
+volatile enum sstate { START, WAITING, SNIPE } sstate;
 
 void waitfor(enum sstate w, enum sstate s)
 {
@@ -375,7 +375,7 @@ void *sniper(void *p)
 {
 	struct poison_arg *arg = p;
 
-	waitfor(WAITING, SNIPE);
+	waitfor(START, WAITING);
 	nanosleep(&((struct timespec) { .tv_nsec = DELAY_NS }), NULL);
 	poison(arg->msg, arg->page, arg->mode);
 	return NULL;
@@ -410,7 +410,7 @@ static void under_io_dirty(void)
 	if (setup_sniper(&arg) < 0)
 		return;
 
-	waitfor(WAITING, SNIPE);
+	waitfor(WAITING, WAITING);
 	expecterr("write under io", write(fd, "xyz", 3));
 	close(fd);
 }
@@ -433,7 +433,7 @@ static void under_io_clean(void)
 	if (setup_sniper(&arg) < 0)
 		return;
 
-	waitfor(WAITING, SNIPE);
+	waitfor(WAITING, WAITING);
 	// what is correct here?
 	if (pread(fd, buf, 10, 0) != 0)
 		perror("pread under io clean");
