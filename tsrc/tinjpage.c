@@ -410,8 +410,9 @@ static void under_io_dirty(void)
 	if (setup_sniper(&arg) < 0)
 		return;
 
+	write(fd, "xyz", 3);
 	waitfor(WAITING, WAITING);
-	expecterr("write under io", write(fd, "xyz", 3));
+	expecterr("write under io", fsync(fd));
 	close(fd);
 }
 
