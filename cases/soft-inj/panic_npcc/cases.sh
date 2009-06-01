@@ -96,19 +96,6 @@ verify()
 	    soft_inject_verify_exp "$no_eripv_exp"
 	    soft_inject_verify_timeout
 	    ;;
-	uc_over)
-	    soft_inject_verify_mcelog
-	    verify_klog $klog
-	    soft_inject_verify_panic "$fatal_panic"
-	    soft_inject_verify_exp "$over_exp"
-	    ;;
-	uc_over_timeout)
-	    soft_inject_verify_mcelog
-	    verify_klog $klog
-	    soft_inject_verify_panic "$curr_cpu_panic"
-	    soft_inject_verify_exp "$over_exp"
-	    soft_inject_verify_timeout
-	    ;;
 	unknown)
 	    verify_klog $klog
 	    soft_inject_verify_panic "$unk_panic"
