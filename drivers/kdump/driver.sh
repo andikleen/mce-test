@@ -100,6 +100,11 @@ dump_gcov()
     if [ -z "$GCOV" ]; then
 	return
     fi
+    if ! chk_gcov; then
+	echo "gcov is not supported by kernel, or there is no gcov utility installed, disable gcov support."
+	unset GCOV
+	return
+    fi
     if [ -z "$KSRC_DIR" ]; then
 	echo "  Failed: please set KSRC_DIR for GCOV"
 	return

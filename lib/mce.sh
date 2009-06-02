@@ -96,6 +96,19 @@ mcelog_filter()
 	grep -e "$pat"
 }
 
+chk_gcov()
+{
+    if [ -z "$GCOV" ]; then
+	return 1
+    fi
+
+    if [ -f /sys/kernel/debug/gcov/reset ] && which gcov > /dev/null; then
+	return 0
+    else
+	return 1
+    fi
+}
+
 reset_gcov()
 {
     if [ -z "$GCOV" ]; then

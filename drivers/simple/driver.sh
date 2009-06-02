@@ -54,8 +54,13 @@ get_result()
 test_all()
 {
     if [ -n "$GCOV" ]; then
-	export GCOV=copy
-	export KSRC_DIR
+	if chk_gcov; then
+	    export GCOV=copy
+	    export KSRC_DIR
+	else
+	    echo "gcov is not supported by kernel, or there is no gcov utility installed, disable gcov support."
+	    unset GCOV
+	fi
     fi
 
     for case_sh in $CASES; do
