@@ -30,26 +30,13 @@ chk_err()
 
 klog_begin()
 {
-    dmesg > $tmp_klog
-    stat -c '%s' $tmp_klog
+    dmesg > $tmp_klog.1
 }
 
 klog_end()
 {
-    local sz_before=$1
-    local sz_after sz_result
-    dmesg > $tmp_klog
-    sz_after=$(stat -c '%s' $tmp_klog)
-    sz_result=$(expr $sz_after - $sz_before)
-    dd if=$tmp_klog of=$klog bs=1 count=$sz_result \
-	skip=$sz_before > /dev/null 2>&1
-    local ret=$?
-    if [ $ret -ne 0 ]; then
-	echo $sz_before $sz_after $sz_result
-	echo "  Failed: Can not get klog" | tee -a $RDIR/result
-	#rm -f $klog
-    fi
-    return $ret
+    dmesg | sed -e '1d' > $tmp_klog.2
+    diff $tmp_klog.1 $tmp_klog.2 | grep '^> ' | sed 's/> \(.*\)/\1/' > $klog
 }
 
 trigger()
@@ -86,10 +73,10 @@ test_all()
 	    local err_log=$WDIR/$this_case/err_log
 
 	    random_sleep
-	    local before=$(klog_begin)
+	    klog_begin
 	    trigger 2>$err_log | tee -a $RDIR/result
 	    chk_err
-	    klog_end $before
+	    klog_end
 	    get_result 2>$err_log | tee -a $RDIR/result
 	    chk_err
 	    $CDIR/$case_sh verify 2>$err_log | tee -a $RDIR/result
