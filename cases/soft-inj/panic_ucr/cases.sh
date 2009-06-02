@@ -36,7 +36,7 @@ get_result()
 verify()
 {
     local removes="TSC TIME PROCESSOR"
-    local fatal_panic=": Fatal machine check"
+    local fatal_panic=": Fatal Machine check"
     local curr_cpu_panic=": Fatal machine check on current CPU"
     local unknown_src_panic=": Machine check from unknown source"
     case "$bcase" in
@@ -44,7 +44,7 @@ verify()
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
 	    soft_inject_verify_panic "$fatal_panic"
-	    soft_inject_verify_exp "Illegal combination (UCNA with S=1)"
+	    soft_inject_verify_exp "Illegal combination (UCNA with AR=1)"
 	    ;;
 	srar_over)
 	    soft_inject_verify_mcelog

@@ -37,7 +37,7 @@ verify()
 {
     local removes="TSC TIME PROCESSOR"
     local over_exp="Overflowed uncorrected"
-    local fatal_panic=": Fatal machine check"
+    local fatal_panic=": Fatal Machine check"
     local curr_cpu_panic=": Fatal machine check on current CPU"
     case "$bcase" in
 	uc_over|uc_over_corrected)

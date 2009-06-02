@@ -42,7 +42,7 @@ verify()
     local no_mcip_exp="MCIP not set in MCA handler"
     local no_eripv_exp="Neither restart nor error IP"
     local over_exp="Overflowed uncorrected"
-    local fatal_panic=": Fatal machine check"
+    local fatal_panic=": Fatal Machine check"
     local curr_cpu_panic=": Fatal machine check on current CPU"
     local unknown_src_panic=": Machine check from unknown source"
     case "$bcase" in
@@ -98,7 +98,7 @@ verify()
 	    ;;
 	unknown)
 	    verify_klog $klog
-	    soft_inject_verify_panic "$unk_panic"
+	    soft_inject_verify_panic "$unknown_src_panic"
 	    ;;
 	*)
 	    echo "!!! Unknown case: $this_case !!!"

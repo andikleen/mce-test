@@ -44,7 +44,7 @@ verify()
 {
     local removes="TSC TIME PROCESSOR"
     local curr_cpu_panic=": Fatal machine check on current CPU"
-    local fatal_panic="Fatal machine check"
+    local fatal_panic="Fatal Machine check"
     local pcc_exp="Processor context corrupt"
     case "$bcase" in
 	fatal|fatal_irq|fatal_over)
