@@ -124,7 +124,7 @@ EOF
 	echo "  Failed: can not dump kernel gcov info"
 	return
     fi
-cat <<EOF > $WDIR/dump_gcov_deskew.sh
+cat <<"EOF" > $WDIR/dump_gcov_deskew.sh
     fn="$1"
     bfn=$(basename "$fn")
     dbfn="${bfn##\.tmp_}"
@@ -132,10 +132,10 @@ cat <<EOF > $WDIR/dump_gcov_deskew.sh
         return
     fi
     d=$(dirname "$fn")
-    mv $fn "$d/$dbfn"
+    cp $fn "$d/$dbfn"
 EOF
     chmod +x $WDIR/dump_gcov_deskew.sh
-    find $KSRC_DIR -name '*.tmp_*gcno' -o -name '*.tmp_*gcda' \
+    find $KSRC_DIR \( -name '*.tmp_*gcno' -o -name '*.tmp_*gcda' \) \
         -exec $WDIR/dump_gcov_deskew.sh \{\} \;
 
     export GCOV=dump
