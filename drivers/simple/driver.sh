@@ -23,7 +23,7 @@ tmp_klog=$WDIR/simple_klog_tmp
 
 chk_err()
 {
-    if [ -s $err_log ]; then
+    if [ \( -n "$DEBUG_MCE_TEST" \) -a \( -s $err_log \) ]; then
 	cat $err_log
     fi
 }
