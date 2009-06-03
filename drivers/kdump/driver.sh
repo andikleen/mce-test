@@ -108,6 +108,12 @@ dump_gcov()
     if [ -z "$KSRC_DIR" ]; then
 	echo "  Failed: please set KSRC_DIR for GCOV"
 	return
+    else
+	KSRC_DIR=$(set -P && cd "$KSRC_DIR" && pwd)
+	if [ -z "$KSRC_DIR"]; then
+	    echo "  Failed: Invalid KSRC_DIR, please check your setup"
+	    return
+	fi
     fi
     export KSRC_DIR
     local gcov_head_raw=$WDIR/dump_gcov_head_raw
