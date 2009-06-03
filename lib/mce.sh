@@ -140,8 +140,10 @@ get_gcov()
     local abs_dir=$(cd -P $KSRC_DIR/$src_dir; pwd)
     case $GCOV in
 	copy)
-	    cp /sys/kernel/debug/gcov/$abs_dir/*.gcda $abs_dir
-	    cp /sys/kernel/debug/gcov/$abs_dir/*.gcno $abs_dir
+	    for f in /sys/kernel/debug/gcov/$abs_dir/*.gc*; do
+		bf=$(basename $f)
+		cat $f > $abs_dir/$bf
+	    done
 	    ;;
 	dump)
 	    true
