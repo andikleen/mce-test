@@ -198,6 +198,7 @@ conf=$(basename "$1")
 
 driver_prepare
 set_tolerant 1
+set_panic_on_oops 0
 
 # Check mandatory variables.
 if [ -z "${COREDIR}" ]; then

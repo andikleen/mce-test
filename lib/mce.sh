@@ -303,3 +303,9 @@ set_fake_panic()
     [ $# -eq 1 ] || die "missing parameter for set_fake_panic"
     echo -n $1 > /sys/devices/system/machinecheck/machinecheck0/fake_panic
 }
+
+set_panic_on_oops()
+{
+    [ $# -eq 1 ] || die "missing parameter for set_panic_on_oops"
+    echo -n $1 > /proc/sys/kernel/panic_on_oops
+}

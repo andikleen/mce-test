@@ -101,6 +101,7 @@ conf=$(basename "$1")
 . $CONF_DIR/$conf
 
 driver_prepare
+set_panic_on_oops 0
 
 if [ -n "$START_BACKGROUND" ]; then
     eval $START_BACKGROUND
