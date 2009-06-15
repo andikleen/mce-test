@@ -58,17 +58,19 @@ random_sleep()
 start_background()
 {
     if [ -n "$BACKGROUND" ]; then
-	eval "$BACKGROUND" "&>$WDIR/background_log &" || \
+	pid_background=$(bash -i -c "$BACKGROUND &>$WDIR/background_log & echo \$!")
+	if ! ps -p $pid_background > /dev/null; then
 	    die "Failed to start background testing: $BACKGROUND"
-	pid_background=$!
+	fi
     fi
 }
 
 stop_background()
 {
     if [ -n "$pid_background" ]; then
-	kill -TERM -$pid_background || true
-	kill $pid_background || true
+	if ! kill -TERM -$pid_background &> /dev/null; then
+	    kill $pid_background || true
+	fi
     fi
 }
 
