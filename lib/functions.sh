@@ -51,7 +51,7 @@ check_kern_warning_bug()
 
 random_sleep()
 {
-    local s=$((RANDOM / 6553))
+    local s=$((RANDOM / 13107 + 5))
     sleep $s
 }
 

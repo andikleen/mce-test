@@ -77,10 +77,10 @@ test_all()
 	    rm -rf $WDIR/$this_case/*
 	    local err_log=$WDIR/$this_case/err_log
 
-	    random_sleep
 	    klog_begin
 	    trigger 2>$err_log | tee -a $RDIR/result
 	    chk_err
+	    random_sleep
 	    klog_end
 	    get_result 2>$err_log | tee -a $RDIR/result
 	    chk_err
