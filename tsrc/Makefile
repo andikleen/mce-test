@@ -1,5 +1,5 @@
 LSRC := ../linux
-BROWSER := links -g
+BROWSER := firefox
 
 CFLAGS += -I ${LSRC}/arch/x86/kernel/cpu/mcheck/ -g -Wall
 
