@@ -3,8 +3,11 @@ machine check code:
 
 To use ttable and tcases you need to specify a linux source tree
 with the mce improvements patchkit added with make LSRC=/path/to/linux
-These are in the "all" default target.
-If that's not available build the other programs with "make program"
+or symlink the linux tree to ../linux
+
+The programs requiring kernel sources are not in the all make target.
+If you want to build them use make requireskernel after you
+set up the kernel sources or specified LSRC.
 
 tcases
 
