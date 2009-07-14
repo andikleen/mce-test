@@ -1,6 +1,7 @@
 /* 
  * Verify MCA grading engine against some examples.
  */
+#include <sys/types.h>
 #include <stdio.h>
 #define __KERNEL__ 1
 #include <asm/types.h>
