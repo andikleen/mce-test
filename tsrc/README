@@ -50,5 +50,6 @@ Old version of tinjpage that tests much less cases, but might be more reliable.
 tring
 
 Old unit test program for the ring buffer used in mca recovery.
+Not in default Makefile target.
 
 -Andi Kleen
