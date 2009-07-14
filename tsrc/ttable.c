@@ -9,6 +9,7 @@
 #include <string.h>
 #include <assert.h>
 #include <unistd.h>
+#include <errno.h>
 #define __KERNEL__ 1
 #include <asm/types.h>
 #include <asm/mce.h>
@@ -67,7 +68,6 @@ struct bit {
 
 struct mce basem;
 
-#define ARRAY_SIZE(x) (sizeof(x)/sizeof(*(x)))
 #define bit_for_each(i,v) for (i = 0; i < 64; i++) if ((v) & (1ULL << i)) 
 
 struct result { 

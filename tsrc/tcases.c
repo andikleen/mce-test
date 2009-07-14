@@ -5,9 +5,9 @@
 #define __KERNEL__ 1
 #include <asm/types.h>
 #include <asm/mce.h>
+#include <errno.h>
 
 typedef unsigned long long u64;
-
 
 #define MCI_STATUS_S	 (1ULL<<56)  /* Signaled machine check */
 #define MCI_STATUS_AR	 (1ULL<<55)  /* Action required */

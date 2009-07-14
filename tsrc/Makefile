@@ -3,6 +3,8 @@ BROWSER := links -g
 
 CFLAGS += -I ${LSRC}/arch/x86/kernel/cpu/mcheck/ -g -Wall
 
+KFLAGS := -I ./kinclude
+
 all: standalone
 
 standalone: tinjpage tinjpage-working tkillpoison
@@ -10,10 +12,10 @@ standalone: tinjpage tinjpage-working tkillpoison
 requireskernel: tcases ttable
 
 tcases: tcases.c ${LSRC}/arch/x86/kernel/cpu/mcheck/mce-severity.c ${LSRC}/arch/x86/kernel/cpu/mcheck/mce-internal.h
-	${CC} ${CFLAGS} -o tcases tcases.c
+	${CC} ${CFLAGS} ${KFLAGS} -o tcases tcases.c
 
 ttable: ttable.c ${LSRC}/arch/x86/kernel/cpu/mcheck/mce-severity.c ${LSRC}/arch/x86/kernel/cpu/mcheck/mce-internal.h
-	${CC} ${CFLAGS} -o ttable ttable.c
+	${CC} ${CFLAGS} ${KFLAGS} -o ttable ttable.c
 
 x.html: ttable
 	./ttable ${TFLAGS} > x.html
