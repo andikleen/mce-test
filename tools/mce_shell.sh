@@ -19,7 +19,7 @@ else
     export driver=simple
 fi
 
-tmpfile=/tmp/mce-test-driver-shell-$$-$RANDOM
+tmpfile=$(mktemp)
 
 trap "rm $tmpfile" EXIT
 
@@ -47,3 +47,4 @@ EOF
 
 export PS1="MCE $driver: "
 /bin/bash --rcfile $tmpfile
+rm $tmpfile
