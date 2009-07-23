@@ -37,7 +37,7 @@ verify()
 {
     local removes="TSC TIME PROCESSOR"
     case "$bcase" in
-	ucna)
+	ucna|ucna_over)
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
 	    ;;

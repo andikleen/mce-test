@@ -58,6 +58,11 @@ verify()
 	    soft_inject_verify_panic "$fatal_panic"
 	    soft_inject_verify_exp "Action required; unknown MCACOD"
 	    ;;
+        srar_no_en)
+            soft_inject_verify_mcelog
+            verify_klog $klog
+            soft_inject_verify_panic "Machine check from unknown source"
+            ;;
 	*)
 	    echo "!!! Unknown case: $this_case !!!"
     esac
