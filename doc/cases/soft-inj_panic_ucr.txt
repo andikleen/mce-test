@@ -1,4 +1,4 @@
-Overall: (3 cases)
+Overall: (4 cases)
 
 - Test method
   * Add cases/soft-inj/panic_ucr/cases.sh into configuration file, and invoke
@@ -77,3 +77,24 @@ Overall: (3 cases)
   * Exception message is "Action required; unknown MCACOD"
 
 
+4. srar_no_en
+
+- Objective:
+  * Test fatal MCE occur
+- Code path tested:
+  * do_machine_check()
+  * mce_start()
+  * mce_timeout() except if (*t <= 0) branch
+  * mce_log()
+  * mce_end()
+  * mce_severity()
+  * mce_reign() until mce_panic("Machine check from unknown source",)
+  * mce_panic()
+  * print_mce()
+- Reference:
+  * Inject data file: cases/soft-inj/panic_ucr/data/srar_no_en
+  * Reference MCE records: cases/soft-inj/panic_ucr/refer/srar_no_en
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Machine check from unknown source"

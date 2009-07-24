@@ -1,4 +1,4 @@
-Overall:(1 cases)
+Overall:(2 cases)
 
 - Test method
   * Preparation
@@ -27,3 +27,18 @@ Overall:(1 cases)
   * No warning or bug during kernel processing.
 
 
+2. ucna_over
+
+- Objective:
+  * Test severity comparison logic of MCE handler
+  * Test logic of uncorrected with POLL
+- Code path tested:
+  * machine_check_poll() except
+        if (!(flags & MCP_UC) &&
+            (m.status & (mce_ser ? MCI_STATUS_S : MCI_STATUS_UC))
+  * mce_log()
+- Reference:
+  * Inject data file: cases/soft-inj/poll_ucr/data/ucna_over
+- Expected result:
+  * MCE records collected via kernel panic log is same as reference ones.
+  * No warning or bug during kernel processing.
