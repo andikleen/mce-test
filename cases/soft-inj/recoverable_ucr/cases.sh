@@ -42,6 +42,12 @@ verify()
 	    verify_klog $klog
 	    soft_inject_verify_return_val
 	    ;;
+	srao_mem_scrub_noripv|srao_ewb_noripv)
+            soft_inject_verify_mcelog
+            verify_klog $klog
+            soft_inject_verify_panic "$fatal_panic"
+            soft_inject_verify_exp "$no_eripv_exp"
+            ;;
 	*)
 	    echo "!!! Unknown case: $this_case !!!"
     esac
