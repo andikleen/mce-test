@@ -36,6 +36,8 @@ get_result()
 verify()
 {
     local removes="TSC TIME PROCESSOR"
+    local fatal_panic="Fatal Machine check"
+    local no_eripv_exp="Neither restart nor error IP"
     case "$bcase" in
 	srao_mem_scrub|srao_ewb|srao_unknown|srao_over|srao_no_en|srao_corrected|srao_ucna)
 	    soft_inject_verify_mcelog
