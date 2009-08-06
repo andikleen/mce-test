@@ -39,6 +39,7 @@ verify()
     local fatal_panic=": Fatal Machine check"
     local curr_cpu_panic=": Fatal machine check on current CPU"
     local unknown_src_panic=": Machine check from unknown source"
+    local no_eripv_exp="Neither restart nor error IP"
     case "$bcase" in
 	s0_ar1)
 	    soft_inject_verify_mcelog
@@ -62,6 +63,12 @@ verify()
             soft_inject_verify_mcelog
             verify_klog $klog
             soft_inject_verify_panic "Machine check from unknown source"
+            ;;
+	srao_mem_scrub_noripv|srao_ewb_noripv)
+            soft_inject_verify_mcelog
+            verify_klog $klog
+            soft_inject_verify_panic "$fatal_panic"
+            soft_inject_verify_exp "$no_eripv_exp"
             ;;
 	*)
 	    echo "!!! Unknown case: $this_case !!!"

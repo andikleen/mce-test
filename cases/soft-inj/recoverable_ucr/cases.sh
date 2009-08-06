@@ -36,20 +36,12 @@ get_result()
 verify()
 {
     local removes="TSC TIME PROCESSOR"
-    local fatal_panic="Fatal Machine check"
-    local no_eripv_exp="Neither restart nor error IP"
     case "$bcase" in
 	srao_mem_scrub|srao_ewb|srao_unknown|srao_over|srao_no_en|srao_corrected|srao_ucna)
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
 	    soft_inject_verify_return_val
 	    ;;
-	srao_mem_scrub_noripv|srao_ewb_noripv)
-            soft_inject_verify_mcelog
-            verify_klog $klog
-            soft_inject_verify_panic "$fatal_panic"
-            soft_inject_verify_exp "$no_eripv_exp"
-            ;;
 	*)
 	    echo "!!! Unknown case: $this_case !!!"
     esac
