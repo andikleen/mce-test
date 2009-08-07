@@ -173,22 +173,24 @@ void testmem(char *msg, char *page, enum rmode mode)
 	recover(msg, page, mode);
 }
 
-void expecterr(char *msg, int res)
+void expecterr(char *msg, int err)
 {
-	if (res == 0) {
+	if (err) {
+		printf("expected error %d on %s\n", errno, msg);
+	} else {
 		failure++;
 		printf("XXX: unexpected no error on %s\n", msg);
-	} else
-		printf("expected error %d on %s\n", errno, msg);
+	}
 }
 
-void optionalerr(char *msg, int res)
+void optionalerr(char *msg, int err)
 {
-	if (res == 0) {
+	if (err) {
+		printf("expected optional error %d on %s\n", errno, msg);
+	} else {
 		unexpected++;
 		printf("XXX: expected likely incorrect no error on %s\n", msg);
-	} else
-		printf("expected optional error %d on %s\n", errno, msg);
+	}
 }
 
 static int tmpcount;
@@ -273,7 +275,7 @@ static void file_dirty(void)
 
 	page = checked_mmap(NULL, PS, PROT_READ, MAP_SHARED|MAP_POPULATE, fd, 0);
 	testmem("dirty file initial", page, MREAD);
-	expecterr("msync expect error", msync(page, PS, MS_SYNC));
+	expecterr("msync expect error", msync(page, PS, MS_SYNC) < 0);
 	close(fd);
 	munmap_reserve(page, PS);
 
@@ -293,9 +295,9 @@ static void file_dirty(void)
 
 	fd = open(fn, O_RDWR);
 	char buf[128];
-	expecterr("explicit read after poison", read(fd, buf, sizeof buf));
-	expecterr("explicit write after poison", write(fd, "foobar", 6));
-	optionalerr("fsync expect error", fsync(fd));
+	expecterr("explicit read after poison", read(fd, buf, sizeof buf) < 0);
+	expecterr("explicit write after poison", write(fd, "foobar", 6) < 0);
+	optionalerr("fsync expect error", fsync(fd) < 0);
 	close(fd);
 
 	/* should unlink return an error here? */
@@ -313,8 +315,8 @@ static void file_hole(void)
 	page = checked_mmap(NULL, PS, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 	*page = 1;
 	testmem("hole file dirty", page, MREAD);
-	expecterr("hole fsync expect error", fsync(fd));
-	optionalerr("hole msync expect error", msync(page, PS, MS_SYNC));
+	expecterr("hole fsync expect error", fsync(fd) < 0);
+	optionalerr("hole msync expect error", msync(page, PS, MS_SYNC) < 0);
 	close(fd);
 }
 
@@ -341,8 +343,8 @@ static void nonlinear(void)
 	}
 	*page = 1;
 	testmem("rfp file dirty", page, MREAD);
-	expecterr("rfp fsync expect error", fsync(fd));
-	optionalerr("rfp msync expect error", msync(page, PS, MS_SYNC));
+	expecterr("rfp fsync expect error", fsync(fd) < 0);
+	optionalerr("rfp msync expect error", msync(page, PS, MS_SYNC) < 0);
 	close(fd);
 }
 
@@ -412,7 +414,7 @@ static void under_io_dirty(void)
 
 	write(fd, "xyz", 3);
 	waitfor(WAITING, WAITING);
-	expecterr("write under io", fsync(fd));
+	expecterr("write under io", fsync(fd) < 0);
 	close(fd);
 }
 
