@@ -291,7 +291,7 @@ static void file_dirty(void)
 	close(fd);
 	munmap_reserve(page, PS);
 
-	fd = open(fn, O_RDONLY);
+	fd = open(fn, O_RDWR);
 	char buf[128];
 	expecterr("explicit read after poison", read(fd, buf, sizeof buf));
 	expecterr("explicit write after poison", write(fd, "foobar", 6));
