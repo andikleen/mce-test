@@ -1,4 +1,4 @@
-Overall: (4 cases)
+Overall: (6 cases)
 
 - Test method
   * Add cases/soft-inj/panic_ucr/cases.sh into configuration file, and invoke
@@ -98,3 +98,38 @@ Overall: (4 cases)
   * No warning or bug during kernel processing.
   * MCE records collected via kernel panic log is same as reference ones.
   * Kernel panic message is "Machine check from unknown source"
+
+5.srao_ewb_noripv
+- Objective:
+  * Test MCE handler logic for EIPV and RIPV MCE in kernel space
+- Code path tested:
+  * do_machine_check()
+  * mce_start()
+  * mce_end()
+  * mce_severity()
+  * mce_regin() for_each_possible_loops loops(check mce-severity message)
+  * mce_panic()
+  * mce_log()
+  * print_mce()
+- Reference:
+  * Inject data file: cases/soft-inj/recoverable_ucr/data/srao_ewb_noripv
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Fatal Machine check"
+  * Exception message is "Neither restart nor error IP"
+
+6.srao_mem_scrub_noripv
+- Objective:
+  * Test MCE handler logic for EIPV and RIPV MCE in kernel space
+- Code path tested:
+  * the same as srao_ewb_noripv
+- Reference:
+  * Inject data file:
+  * cases/soft-inj/recoverable_ucr/data/srao_mem_scrub_noripv
+- Expected result:
+  * No warning or bug during kernel processing.
+  * MCE records collected via kernel panic log is same as reference ones.
+  * Kernel panic message is "Fatal Machine check"
+  * Exception message is "Neither restart nor error IP"
+
