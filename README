@@ -14,6 +14,7 @@ Here is a short description of what is included in the package
 
 README
 	This document
+
 COPYING
 	GNU General Public License
 
@@ -21,7 +22,6 @@ Makefile
 	Top level make file for MCE test suite
 
 drivers/*
-
 	Contains test drivers, which drive test procedure and do some
 	common works for test drivers. There is one directory for each
 	test driver, the user interface of a driver is the driver.sh
@@ -41,6 +41,10 @@ config/*
 	Contains test configuration files, which specifies the
 	parameters for test driver, which test cases are used in test,
 	the parameters for test cases, etc.
+
+tsrc/*
+	Some standalone test programs for various parts of the machine
+	check code.
 
 lib/*
 	Contains some shell scripts, in which some common shell
@@ -76,12 +80,21 @@ bin/
 	Some tools used by test drivers or test cases will be
 	installed into this directory.
 
+
+Test Instruction
+----------------
+
+Please refer to corresponding section in doc/howto.txt.
+
+
 Futher Information
 ------------------
 
 For futher information about MCE test suite, please refer to documents
 in doc sub-directory.
 
-README.kdump:		For testing via kdump. With kdump, a real panic
-			will triggered.
-design.txt:		Simple design document
+doc/howto.txt:		a more detailed HOWTO document
+
+doc/cases/*.txt:	Description of every test case, including test
+			objective, code patch tested, reference and
+			expected results
