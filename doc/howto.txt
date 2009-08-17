@@ -18,26 +18,36 @@ guide and how to add new test cases into test suite.
 
 0. Quick shortcut
 ------------------
-- Get mcelog git version from 
-git://git.kernel.org/pub/scm/utils/cpu/mce/mcelog.git.
-and install in /usr/sbin (or rather first in your $PATH)
 
-git clone git://git.kernel.org/pub/scm/utils/cpu/mce/mcelog.git
-cd mcelog
-make
-sudo make install
+- Install the Linux kernel with full MCE injection support, including
+  latest Linux kernel (2.6.31) and MCE injection enhancement patchset
+  in: http://ftp.kernel.org/pub/linux/kernel/people/yhuang/mce/. Make
+  sure following configuration options are enabled:
+
+  CONFIG_X86_MCE=y
+  CONFIG_X86_MCE_INTEL=y
+  CONFIG_X86_MCE_INJECT=y
+
+- Get mcelog git version from 
+  git://git.kernel.org/pub/scm/utils/cpu/mce/mcelog.git.
+  and install in /usr/sbin (or rather first in your $PATH)
+
+  git clone git://git.kernel.org/pub/scm/utils/cpu/mce/mcelog.git
+  cd mcelog
+  make
+  sudo make install
 
 - Get mce-inject git version from
-git://git.kernel.org/pub/scm/utils/cpu/mce/mce-inject.git.
+  git://git.kernel.org/pub/scm/utils/cpu/mce/mce-inject.git.
 
-git clone git://git.kernel.org/pub/scm/utils/cpu/mce/mce-inject.git
-cd mce-inject
-make
-sudo make install
+  git clone git://git.kernel.org/pub/scm/utils/cpu/mce/mce-inject.git
+  cd mce-inject
+  make
+  sudo make install
 
 - Run make test-simple
-This will do the basic tests, but not the more complicated kdump ones.
-For more information on those read below.
+  This will do the basic tests, but not the more complicated kdump ones.
+  For more information on those read below.
 
 1. Introduction
 ---------------
@@ -237,9 +247,7 @@ instructions.
 
 a. Linux kernel and user space tools as follow should be installed
 
-   - A Linux kernel with MCE injection support. Latest Linux kernel
-     MCE injection patches can be found at:
-     git://git.kernel.org/pub/scm/linux/kernel/git/ak/linux-mce-2.6.git
+   - A Linux kernel with full MCE injection support (see 0)
    - mce-inject tool (see 3.1)
    - mcelog with proper version (see 3.2)
 
@@ -287,8 +295,12 @@ Enterprise Linux 5. Since KDUMP is supported by the above mentioned
 distro's the test driver was written and tested on them. Contribution
 towards supporting more distributions are welcome.
 
-a. Install Linux kernel with MCE injection support. Latest Linux
-   kernel MCE injection patches can be found at: FIXME url.
+a. Install Linux kernel with full MCE injection and KDUMP support. In
+   addition to MCE injection support in section 0, the following
+   configuration options should be enabled too:
+
+   CONFIG_KEXEC=y
+   CONFIG_CRASH_DUMP=y
 
 b. Install these additional packages:
 
