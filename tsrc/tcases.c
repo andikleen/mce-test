@@ -8,6 +8,8 @@
 #include <asm/mce.h>
 #include <errno.h>
 
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(*(x)))
+
 typedef unsigned long long u64;
 
 #define MCI_STATUS_S	 (1ULL<<56)  /* Signaled machine check */

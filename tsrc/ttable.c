@@ -14,6 +14,8 @@
 #include <asm/types.h>
 #include <asm/mce.h>
 
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(*(x)))
+
 typedef unsigned long long u64;
 
 
