@@ -29,7 +29,7 @@ setup_crontab ()
     set +e
     crontab -r
     set -e
-   
+
     # crontab in some distros will not read from STDIN.
 
     cat <<EOF > $WDIR/kdump.cron
@@ -42,7 +42,7 @@ EOF
     crontab $WDIR/kdump.cron
 
     echo "Enable cron daemon by default."
-    
+
     if [ -f /etc/init.d/crond ]; then
         cron=crond
     else
@@ -53,7 +53,7 @@ EOF
     # Red Hat and SUSE.
     if [ -x "/sbin/chkconfig" ]; then
         /sbin/chkconfig "${cron}" on
- 
+
     # Debian and Ubuntu.
     elif [ -x "/sbin/update-rc.d" ]; then
         /sbin/update-rc.d "${cron}" defaults
@@ -64,16 +64,16 @@ setup_kdump ()
 {
     echo "Start kdump daemon."
     /etc/init.d/kdump restart
-    
+
     echo "Enable kdump daemon by default."
     # Red Hat and SUSE.
     if [ -x "/sbin/chkconfig" ]; then
         /sbin/chkconfig kdump on
-        
+
     # Debian and Ubuntu.
     elif [ -x "/sbin/update-rc.d" ]; then
         /sbin/update-rc.d kdump defaults
-    fi    
+    fi
 }
 
 get_klog()
@@ -101,7 +101,8 @@ dump_gcov()
 	return
     fi
     if ! chk_gcov; then
-	echo "gcov is not supported by kernel, or there is no gcov utility installed, disable gcov support."
+	echo "gcov is not supported by kernel, or there is no " \
+	    "gcov utility installed, disable gcov support."
 	unset GCOV
 	return
     fi
@@ -205,7 +206,7 @@ if [ -z "${COREDIR}" ]; then
     die "Fail: some mandatory variables are missing from configuration file."
 fi
 
-# Reboot the machine first to take advantage of boot parameter 
+# Reboot the machine first to take advantage of boot parameter
 # changes.
 if [ ! -f $WDIR/stamps/setupped ]; then
     echo "Setup test environment."

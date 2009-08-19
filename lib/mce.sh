@@ -252,12 +252,12 @@ get_panic_from_mcelog()
     local addr
     if mcelog_filter $mcelog "#BANK 219#" | head -1 > $tmpf; then
 	local F="$(sed '1,$s/#/\n/g' $tmpf | awk '/MISC / { print $2 }')"
-	case "$F" in 
-	0x1) echo "Fatal machine check" ;;
-	0x2) echo "Machine check from unknown source" ;;
-	0x3) echo "Uncorrected data corruption machine check" ;;
-	0x4) echo "Fatal machine check" ;;
-	*) echo unknown panic $F ;;
+	case "$F" in
+	    0x1) echo "Fatal machine check" ;;
+	    0x2) echo "Machine check from unknown source" ;;
+	    0x3) echo "Uncorrected data corruption machine check" ;;
+	    0x4) echo "Fatal machine check" ;;
+	    *) echo unknown panic $F ;;
 	esac
     fi
 }
