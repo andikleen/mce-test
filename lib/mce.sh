@@ -301,7 +301,7 @@ get_tolerant()
 set_fake_panic()
 {
     [ $# -eq 1 ] || die "missing parameter for set_fake_panic"
-    echo -n $1 > /sys/devices/system/machinecheck/machinecheck0/fake_panic
+    echo -n $1 > /sys/kernel/debug/mce/fake_panic
 }
 
 set_panic_on_oops()
