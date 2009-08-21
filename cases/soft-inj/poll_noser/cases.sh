@@ -1,10 +1,10 @@
 #!/bin/sh
 #
 # Software injection based test cases: test cases are triggered via
-# mce-inject tool.
+# the mce-inject tool.
 #
 # Copyright (C) 2009, Intel Corp.
-#   Author: Huang Ying <ying.huang@intel.com>
+#   Author: Jiajia Zheng <jiajia.zheng@intel.com>
 #
 # This file is released under the GPLv2.
 #
@@ -37,12 +37,7 @@ verify()
 {
     local removes="TSC TIME PROCESSOR"
     case "$bcase" in
-	ucna|ucna_over|srar_poll)
-	    soft_inject_verify_mcelog
-	    verify_klog $klog
-	    ;;
-        fatal_poll)
-            removes="$removes RIP"
+        uc_poll)
             soft_inject_verify_mcelog
             verify_klog $klog
             ;;
