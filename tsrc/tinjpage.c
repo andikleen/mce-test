@@ -18,9 +18,7 @@
 #include <time.h>
 #include <pthread.h>
 
-#ifndef MADV_POISON
-#define MADV_POISON 12
-#endif
+#define MADV_POISON 100
 
 #define TMPDIR "./"
 #define PATHBUFLEN 100
