@@ -25,6 +25,3 @@ test:
 test-simple:
 	$(MAKE) reset
 	./drivers/simple/driver.sh simple.conf
-
-
-

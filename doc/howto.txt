@@ -204,16 +204,7 @@ git://git.kernel.org/pub/scm/utils/cpu/mce/mcelog.git.
 
 Note you need the git version of mcelog available in $PATH.
 
-3.3 readcore
-
-readcore read crash dump core file and output memory contents at
-specified virtual address with specified length or zero
-terminated. readcore is used to read some kernel information from
-/proc/kcore and kdump core file. The source code of readcore is put
-in tools/readcore. For more information about readcore please refer to
-README of readcore, which is in tools/readcore/README.
-
-3.4 gcovdump
+3.3 gcovdump
 
 gcov is a test coverage tool, the original implementation is used for
 user space program only. LTP (Linux Test Project) provides the kernel
