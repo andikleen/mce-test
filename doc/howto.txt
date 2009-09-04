@@ -306,24 +306,48 @@ b. Install these additional packages:
      * kexec-tools
      * kernel-devel
 
-c. In addition to bzImage and modules of Linux kernel should be
+c. Configure where to put the kdump /proc/vmcore files. The path should be
+   specified via COREDIR in test configuration file.
+   By default, the kdump /proc/vmcore files will be put into /var/crash.
+
+   For SLES10 or OpenSUSE Distro:
+     * edit KDUMP_SAVEDIR in /etc/sysconfig/kdump
+   For RHEL5 or Fedora distro:
+     * edit path in /etc/kdump.conf
+
+d. In addition to bzImage and modules of Linux kernel should be
    installed on test machine, the vmlinux of Linux kernel should be
    put on test machine and specified via VMLINUX in test configuration
    file.
 
-d. Make sure the partition where the test driver is running has space
+e. Make sure the partition where the test driver is running has space
    for the tests results and one vmcore file (size of physical
    memory).
 
-e. Create a new test configuration file or use a existing one in
+f. Now, reboot system. Test if kdump works by starting kdump and triggering
+   kernel panic.
+
+   For SLES10 or OpenSUSE Distro:
+    service boot.kdump restart
+    chkconfig boot.kdump on
+    echo "c" > /proc/sysrq-trigger
+
+   For RHEL5 or Fedora distro:
+    service kdump restart
+    /sbin/chkconfig kdump on
+    echo "c" > /proc/sysrq-trigger
+
+   After system reboot, check if there are vmcore files. By default, they are in /var/crash/*/. If yes, "kdump" works in the system.
+
+g. Create a new test configuration file or use a existing one in
    config/, such as kdump.conf. Note: not all test case classes can be
    used with kdump test driver, see "important points" below.
 
-f. Run "make". Carefully check for any errors.
+h. Run "make". Carefully check for any errors.
 
-g. To be root and run "drivers/kdump/driver.sh <conf>"
+i. To be root and run "drivers/kdump/driver.sh <conf>"
 
-h. After test is done, the test log of the last run of kdump driver will
+j. After test is done, the test log of the last run of kdump driver will
    be displayed on main console.
 
 Few Important points to remember:
