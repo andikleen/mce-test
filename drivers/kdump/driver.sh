@@ -63,16 +63,24 @@ EOF
 setup_kdump ()
 {
     echo "Start kdump daemon."
-    /etc/init.d/kdump restart
+
+    if [ -f /etc/init.d/kdump ]; then
+	    daemon=kdump
+    else
+	    #SLE11
+	    daemon=boot.kdump
+    fi
+
+    /etc/init.d/"${daemon}" restart
 
     echo "Enable kdump daemon by default."
     # Red Hat and SUSE.
     if [ -x "/sbin/chkconfig" ]; then
-        /sbin/chkconfig kdump on
+        /sbin/chkconfig "${daemon}" on
 
     # Debian and Ubuntu.
     elif [ -x "/sbin/update-rc.d" ]; then
-        /sbin/update-rc.d kdump defaults
+        /sbin/update-rc.d "${daemon}" defaults
     fi
 }
 
