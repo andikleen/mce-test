@@ -89,7 +89,7 @@ void sighandler(int sig, siginfo_t *si, void *arg)
 		failure++;
 	}
 
-	printf("signal %d code %d addr %p\n", sig, si->si_code, si->si_addr);
+	printf("\tsignal %d code %d addr %p\n", sig, si->si_code, si->si_addr);
 
 	if (--recovercount == 0) {
 		write(1, PAIR("I seem to be in a signal loop. bailing out.\n"));
@@ -139,7 +139,7 @@ void poison(char *msg, char *page, enum rmode mode)
 			printf("XXX: %s: killed\n", msg);
 			failure++;
 		} else
-			printf("recovered\n");
+			printf("\trecovered\n");
 	}
 }
 
@@ -151,18 +151,18 @@ void recover(char *msg, char *page, enum rmode mode)
 	if (sigsetjmp(recover_ctx, 1) == 0) {
 		switch (mode) {
 		case MWRITE:
-			printf("writing 2\n");
+			printf("\twriting 2\n");
 			*page = 2;
 			break;
 		case MWRITE_OK:
-			printf("writing 4\n");
+			printf("\twriting 4\n");
 			*page = 4;
 			return;
 		case MREAD:
-			printf("%x\n", *(unsigned char *)page);
+			printf("\treading %x\n", *(unsigned char *)page);
 			break;
 		case MREAD_OK:
-			printf("%x\n", *(unsigned char *)page);
+			printf("\treading %x\n", *(unsigned char *)page);
 			return;
 		case MNOTHING:
 			return;
@@ -176,12 +176,12 @@ void recover(char *msg, char *page, enum rmode mode)
 		printf("XXX: %s: killed\n", msg);
 		failure++;
 	} else
-		printf("recovered\n");
+		printf("\trecovered\n");
 }
 
 void testmem(char *msg, char *page, enum rmode mode)
 {
-	printf("%s page %p\n", msg, page);
+	printf("\t%s poisoning page %p\n", msg, page);
 	poison(msg, page, mode);
 	recover(msg, page, mode);
 }
@@ -189,7 +189,7 @@ void testmem(char *msg, char *page, enum rmode mode)
 void expecterr(char *msg, int err)
 {
 	if (err) {
-		printf("expected error %d on %s\n", errno, msg);
+		printf("\texpected error %d on %s\n", errno, msg);
 	} else {
 		failure++;
 		printf("XXX: unexpected no error on %s\n", msg);
@@ -199,7 +199,7 @@ void expecterr(char *msg, int err)
 void optionalerr(char *msg, int err)
 {
 	if (err) {
-		printf("expected optional error %d on %s\n", errno, msg);
+		printf("\texpected optional error %d on %s\n", errno, msg);
 	} else {
 		unexpected++;
 		printf("XXX: expected likely incorrect no error on %s\n", msg);
@@ -554,11 +554,14 @@ int main(int ac, char **av)
 	struct testcase *t;
 	/* catch signals */
 	sigaction(SIGBUS, &sa, NULL);
-	for (t = cases; t->f; t++)
+	for (t = cases; t->f; t++) { 
+		printf("---- testing %s\n", t->name);
 		t->f();
+	}
 
 	/* suicide version */
 	for (t = cases; t->f; t++) {
+		printf("---- testing %s in child\n", t->name);
 		pid_t child = fork();
 		if (child == 0) {
 			signal(SIGBUS, SIG_DFL);
