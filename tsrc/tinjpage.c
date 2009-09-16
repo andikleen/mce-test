@@ -247,7 +247,7 @@ static void mlocked_anonymous(void)
 	testmem("mlocked", page, MWRITE);
 }
 
-static void file_clean(void)
+static void do_file_clean(int flags, char *name)
 {
 	char *page;
 	char fn[30];
@@ -257,37 +257,57 @@ static void file_clean(void)
 		err("open temp file");
 	write(fd, fn, 4);
 	fsync(fd);
-	page = checked_mmap(NULL, PS, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+	page = checked_mmap(NULL, PS, PROT_READ|PROT_WRITE, MAP_SHARED|flags, 
+		fd, 0);
 	close(fd);
-	testmem("file clean", page, MREAD_OK);
+	testmem(name, page, MREAD_OK);
 	printf("%x\n", *(unsigned char *)page); /* reread page from disk */
-	testmem("file clean", page, MWRITE_OK);
+	testmem(name, page, MWRITE_OK);
 }
 
-static void file_dirty(void)
+static void file_clean(void)
 {
+	do_file_clean(0, "file clean");
+}
+
+static void file_clean_mlocked(void)
+{
+	do_file_clean(MAP_LOCKED, "file clean mlocked");
+}
+
+static char *ndesc(char *buf, char *name, char *add)
+{
+	snprintf(buf, 100, "%s %s", name, add);
+	return buf;
+}
+
+static void do_file_dirty(int flags, char *name)
+{
+	char nbuf[100];
 	char *page;
 	char fn[PATHBUFLEN];
 	fn[0] = 0;
 	int fd = playfile(fn);
 
-	page = checked_mmap(NULL, PS, PROT_READ, MAP_SHARED|MAP_POPULATE, fd, 0);
-	testmem("dirty file initial", page, MREAD);
+	page = checked_mmap(NULL, PS, PROT_READ, 
+			MAP_SHARED|MAP_POPULATE|flags, fd, 0);
+	testmem(ndesc(nbuf, name, "initial"), page, MREAD);
 	expecterr("msync expect error", msync(page, PS, MS_SYNC) < 0);
 	close(fd);
 	munmap_reserve(page, PS);
 
 	fd = open(fn, O_RDONLY);
 	if (fd < 0) err("reopening temp file");
-	page = checked_mmap(NULL, PS, PROT_READ, MAP_SHARED|MAP_POPULATE, fd, 0);
-	recover("dirty file populated", page, MREAD_OK);
+	page = checked_mmap(NULL, PS, PROT_READ, MAP_SHARED|MAP_POPULATE|flags, 
+				fd, 0);
+	recover(ndesc(nbuf, name, "populated"), page, MREAD_OK);
 	close(fd);
 	munmap_reserve(page, PS);
 
 	fd = open(fn, O_RDONLY);
 	if (fd < 0) err("reopening temp file");
-	page = checked_mmap(NULL, PS, PROT_READ, MAP_SHARED, fd, 0);
-	recover("dirty file fault", page, MREAD_OK);
+	page = checked_mmap(NULL, PS, PROT_READ, MAP_SHARED|flags, fd, 0);
+	recover(ndesc(nbuf, name, "fault"), page, MREAD_OK);
 	close(fd);
 	munmap_reserve(page, PS);
 
@@ -301,6 +321,16 @@ static void file_dirty(void)
 	/* should unlink return an error here? */
 	if (unlink(fn) < 0)
 		perror("unlink");
+}
+
+static void file_dirty(void)
+{
+	do_file_dirty(0, "file dirty");
+}
+
+static void file_dirty_mlocked(void)
+{
+	do_file_dirty(MAP_LOCKED, "file dirty mlocked");
 }
 
 /* TBD */
@@ -453,6 +483,8 @@ struct testcase {
 	{ file_clean, "file clean", 1 },
 	{ file_dirty, "file dirty" },
 	{ file_hole, "file hole" },
+	{ file_clean_mlocked, "file clean mlocked", 1 },
+	{ file_dirty_mlocked, "file dirty mlocked"},
 	{ nonlinear, "nonlinear" },
 	/* { under_io_dirty, "under io dirty" }, */
 	/* { under_io_clean, "under io clean" }, */
