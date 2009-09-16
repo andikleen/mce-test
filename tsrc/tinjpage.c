@@ -391,6 +391,10 @@ static void nonlinear(void)
 	close(fd);
 }
 
+/* 
+ * These tests are currently too racy to be enabled.
+ */
+
 /*
  * This is quite timing dependent. The sniper might hit the page
  * before it is dirtied. If that happens tweak the delay
@@ -501,14 +505,41 @@ struct testcase {
 	{ file_clean_mlocked, "file clean mlocked", 1 },
 	{ file_dirty_mlocked, "file dirty mlocked"},
 	{ nonlinear, "nonlinear" },
-	/* { under_io_dirty, "under io dirty" }, */
-	/* { under_io_clean, "under io clean" }, */
+	{},	/* dummy 1 for sniper */
+	{},	/* dummy 2 for sniper */
 	{}
 };
 
+struct testcase snipercases[] = {
+	{ under_io_dirty, "under io dirty" }, 
+	{ under_io_clean, "under io clean" },
+};
 
-int main(void)
+void usage(void)
 {
+	fprintf(stderr, "Usage: tinjpage [--sniper]\n"
+			"Test hwpoison injection on pages in various states\n"
+			"--sniper: Enable racy sniper tests (likely broken)\n");
+	exit(1);
+}
+
+void handle_opts(char **av)
+{
+	if (!strcmp(av[1], "--sniper")) { 
+		struct testcase *t;
+		for (t = cases; t->f; t++)
+			;
+		*t++ = snipercases[0];
+		*t++ = snipercases[1];
+	} else 
+		usage();
+}
+
+int main(int ac, char **av)
+{
+	if (av[1])
+		handle_opts(av);
+
 	PS = getpagesize();
 
 	/* don't kill me at poison time, but possibly at page fault time */
