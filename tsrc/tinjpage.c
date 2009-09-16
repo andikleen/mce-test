@@ -196,13 +196,17 @@ void expecterr(char *msg, int err)
 	}
 }
 
+/* 
+ * Any optional error is really a deficiency in the kernel VFS error reporting
+ * and should be eventually fixed and turned into a expecterr
+ */
 void optionalerr(char *msg, int err)
 {
 	if (err) {
 		printf("\texpected optional error %d on %s\n", errno, msg);
 	} else {
 		unexpected++;
-		printf("XXX: expected likely incorrect no error on %s\n", msg);
+		printf("LATER: expected likely incorrect no error on %s\n", msg);
 	}
 }
 
@@ -328,8 +332,9 @@ static void do_file_dirty(int flags, char *name)
 
 	fd = open(fn, O_RDWR);
 	char buf[128];
-	expecterr("explicit read after poison", read(fd, buf, sizeof buf) < 0);
-	expecterr("explicit write after poison", write(fd, "foobar", 6) < 0);
+	/* the earlier close has eaten the error */
+	optionalerr("explicit read after poison", read(fd, buf, sizeof buf) < 0);
+	optionalerr("explicit write after poison", write(fd, "foobar", 6) < 0);
 	optionalerr("fsync expect error", fsync(fd) < 0);
 	close(fd);
 
@@ -358,7 +363,8 @@ static void file_hole(void)
 	page = checked_mmap(NULL, PS, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 	*page = 1;
 	testmem("hole file dirty", page, MREAD);
-	expecterr("hole fsync expect error", fsync(fd) < 0);
+	/* hole error reporting doesn't work in kernel currently, so optional */
+	optionalerr("hole fsync expect error", fsync(fd) < 0);
 	optionalerr("hole msync expect error", msync(page, PS, MS_SYNC) < 0);
 	close(fd);
 }
