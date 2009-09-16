@@ -280,7 +280,8 @@ static void do_file_clean(int flags, char *name)
 		fd, 0);
 	close(fd);
 	testmem(name, page, MREAD_OK);
-	printf("%x\n", *(unsigned char *)page); /* reread page from disk */
+	 /* reread page from disk */
+	printf("\t reading %x\n", *(unsigned char *)page);	
 	testmem(name, page, MWRITE_OK);
 }
 
