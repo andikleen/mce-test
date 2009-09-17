@@ -30,7 +30,7 @@ while [ 1 ] ; do
 	sed -e'/gcov/d' $ROOT/results/simple/result | grep "Fail" > /dev/null
 	if [ $? = 0 ] ; then
 		echo "failed on loop $i"
-		exit 0
+		exit 1
 	fi
 done
 
