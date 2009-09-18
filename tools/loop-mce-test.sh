@@ -14,13 +14,22 @@
 
 sd=$(dirname "$0")
 export ROOT=`(cd $sd/..; pwd)`
+prog=$(basename "$0")
+
+usage()
+{
+    echo "$prog <config>"
+    exit 1
+}
 
 . $ROOT/lib/functions.sh
 
-[ $# -eq 1 ] || die "missing parameter for loop-mce-test: ./loop-mce-test <config_file>"
+[ $# -eq 1 ] || usage
+config=$(basename "$1")
+[ -f $ROOT/config/$config ] || usage
 
 i=0
-while [ 1 ] ; do
+while true ; do
 	((i=i+1))
 	echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!! loop $i"
 	rm $ROOT/results/simple/result
