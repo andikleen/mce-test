@@ -248,12 +248,18 @@ b. Modify config/simple.conf or create a new test configuration
 
 c. Run "make". Carefully check for any errors.
 
-d. To be root and invoke simple test driver on test configuration file
+d. It is recommended to stop cron before testing. Because there
+   might be another mcelog reading events running on background
+   by cron, which will upset the test.
+
+      /etc/init.d/crond stop
+
+e. To be root and invoke simple test driver on test configuration file
    as follow
 
        drivers/simple/driver.sh config/simple.conf
 
-e. General test result will go results/simple/result. Test log will go
+f. General test result will go results/simple/result. Test log will go
    work/simple/log. Additional test results for various test cases
    will go results/simple/<test case>/<xxx>. For more details about
    in-package test case class, please refer to section 2.1.
@@ -461,6 +467,15 @@ Some tools are provided to help analyze test result.
 
   Where <grep options> are same as options available to /bin/grep.
 
+- tools/loop-mce-test
+
+  Run mce test cases in a loop. It exits on failure of any one of the test
+  cases. This script is using simple test driver.
+
+  Usage:
+      ./loop-mce-test <config_file>
+ 
+  Note that only simple test configure file can be used here.
 
 5. Add test cases
 -----------------
