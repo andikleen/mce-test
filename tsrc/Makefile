@@ -7,7 +7,7 @@ KFLAGS := -I ./kinclude
 
 all: standalone
 
-standalone: tinjpage tinjpage-working tkillpoison
+standalone: tinjpage tinjpage-working tkillpoison tprctl
 
 requireskernel: tcases ttable
 
@@ -16,6 +16,8 @@ tcases: tcases.c ${LSRC}/arch/x86/kernel/cpu/mcheck/mce-severity.c ${LSRC}/arch/
 
 ttable: ttable.c ${LSRC}/arch/x86/kernel/cpu/mcheck/mce-severity.c ${LSRC}/arch/x86/kernel/cpu/mcheck/mce-internal.h
 	${CC} ${CFLAGS} ${KFLAGS} -o ttable ttable.c
+
+tprctl: tprctl.o
 
 tring: tring.o 
 
