@@ -59,9 +59,9 @@ void test(int early)
 		printf("finished\n");
 	} else {
 		printf("recovered\n");
-		if (seq == 1 && !early)
+		if (seq == 1 && early)
 			fail("early mode set, but no early kill");
-		if (seq == 0 && early)
+		if (seq == 0 && !early)
 			fail("late mode set, but early kill");
 	}
 }
@@ -74,10 +74,10 @@ int main(void)
 		err("PR_MCE_KILL_GET");
 	if (err != PR_MCE_KILL_DEFAULT)
 		fail("starting policy not default");
-	if (prctl(PR_MCE_KILL_SET, PR_MCE_KILL_SET, PR_MCE_KILL_LATE) < 0)
+	if (prctl(PR_MCE_KILL, PR_MCE_KILL_SET, PR_MCE_KILL_LATE, 0, 0, 0) < 0)
 		err("PR_MCE_KILL_SET late");
 	test(0);	
-	if (prctl(PR_MCE_KILL_SET, PR_MCE_KILL_SET, PR_MCE_KILL_EARLY) < 0)
+	if (prctl(PR_MCE_KILL, PR_MCE_KILL_SET, PR_MCE_KILL_EARLY, 0, 0, 0) < 0)
 		err("PR_MCE_KILL_SET early");
 	test(1);
 	err = prctl(PR_MCE_KILL_GET, 0, 0, 0,0,0);
@@ -85,7 +85,7 @@ int main(void)
 		err("PR_MCE_KILL_GET");
 	if (err != PR_MCE_KILL_EARLY)
 		fail("get mode not early after setting");
-	if (prctl(PR_MCE_KILL_SET, PR_MCE_KILL_CLEAR, 0, 0,0,0) < 0)
+	if (prctl(PR_MCE_KILL, PR_MCE_KILL_CLEAR, 0, 0,0,0) < 0)
 		err("PR_MCE_KILL_CLEAR");
 	err = prctl(PR_MCE_KILL_GET, 0, 0, 0, 0, 0);
 	if (err < 0)
