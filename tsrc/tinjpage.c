@@ -275,9 +275,9 @@ static void do_file_clean(int flags, char *name)
 	if (fd < 0)
 		err("open temp file");
 	write(fd, fn, 4);
-	fsync(fd);
 	page = checked_mmap(NULL, PS, PROT_READ|PROT_WRITE, MAP_SHARED|flags, 
 		fd, 0);
+	fsync(fd);
 	close(fd);
 	testmem(name, page, MREAD_OK);
 	 /* reread page from disk */
