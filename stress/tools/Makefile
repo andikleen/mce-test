@@ -5,13 +5,12 @@ all:
 		${MAKE} -C $$i $@;      \
 	done
 
-clean:
+install:
 	@for i in ${SUBDIRS}; do        \
 		${MAKE} -C $$i $@;      \
 	done
-	rm -rf tmp result
 
-distclean:
+clean:
 	@for i in ${SUBDIRS}; do        \
 		${MAKE} -C $$i $@;      \
 	done

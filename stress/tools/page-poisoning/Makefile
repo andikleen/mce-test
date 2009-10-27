@@ -1,7 +1,11 @@
-all:
-	gcc -Wall -g page-poisoning.c -o page-poisoning 
+all: page-poisoning
 
+page-poisoning: page-poisoning.o
+
+../../bin/page-poisoning: page-poisoning
 	cp page-poisoning ../../bin
+
+install: ../../bin/page-poisoning
 
 clean:
 	rm -f page-poisoning *.o

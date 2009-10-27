@@ -1,7 +1,10 @@
-all:
-	gcc -Wall -g k-tree-gen.c -o k-tree-gen 
-	gcc -Wall -g k-tree-trav.c -o k-tree-trav 
+all: k-tree-gen k-tree-trav 
 
+k-tree-trav: k-tree-trav.o 
+
+k-tree-gen: k-tree-gen.o
+
+install:
 	cp fs-metadata.sh k-thread.sh k-tree-gen k-tree-trav ../../bin
 
 clean:
