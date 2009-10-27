@@ -2,15 +2,18 @@
 all:
 	$(MAKE) -C tools
 	$(MAKE) -C tsrc
+	$(MAKE) -C stress
 
 clean:
 	$(MAKE) -C tools clean
 	$(MAKE) -C tsrc clean
+	$(MAKE) -C stress clean
 	$(MAKE) reset
 
 distclean:
 	$(MAKE) -C tools distclean
 	$(MAKE) -C tsrc distclean
+	$(MAKE) -C stress distclean
 	$(MAKE) reset
 
 reset:
