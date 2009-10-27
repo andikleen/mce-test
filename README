@@ -80,6 +80,8 @@ bin/
 	Some tools used by test drivers or test cases will be
 	installed into this directory.
 
+stress/
+	Linux MCE stress test suite.
 
 Test Instruction
 ----------------
@@ -94,6 +96,8 @@ For futher information about MCE test suite, please refer to documents
 in doc sub-directory.
 
 doc/howto.txt:		a more detailed HOWTO document
+
+doc/stress-howto.txt:	Detailed HOWTO document for MCE stress test suite
 
 doc/cases/*.txt:	Description of every test case, including test
 			objective, code patch tested, reference and
