@@ -764,8 +764,10 @@ int main(int ac, char **av)
 	system("sysctl -w vm.memory_failure_early_kill=1");
 
 	sigaction(SIGBUS, &sa, NULL);
-	for (t = cases; t->f; t++)
+	for (t = cases; t->f; t++) {
+		printf("---- testing %s (early kill)\n", t->name);
 		t->f();
+	}
 
 	if (failure > 0) {
 		printf("FAILURE -- %d cases broken!\n", failure);
