@@ -584,16 +584,17 @@ static void do_shared(int shared_mode)
 	}
 
 	if (pid) {
+		siginfo_t sig;
+
 		if (early_kill && sigsetjmp(early_recover_ctx, 1) == 0) {
 			if (put_semaphore(sem_id, &sembuffer))
 				err("get_semaphore");
 			/* waiting for SIGBUS from child */
 			sleep(10);
-		printf("XXX timeout: child process does not send signal.");
+			printf("XXX timeout: child process does not send signal\n");
 			failure++;
 			return;
 		}
-		siginfo_t sig;
 		waitid(P_PID, pid, &sig, WEXITED);
 
 		/*
@@ -635,7 +636,7 @@ static void do_shared(int shared_mode)
 		if (shared_mode == IPV_SHARED && shmdt(shared_page) == -1)
 			err("shmdt");
 
-		_exit(0);
+		_exit(failure);
 	}
 
 	return;
