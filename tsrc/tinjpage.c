@@ -32,6 +32,9 @@
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/sem.h>
 
 #define MADV_POISON 100
 
@@ -497,6 +500,161 @@ static void under_io_clean(void)
 	close(fd);
 }
 
+/*
+ * semaphore get/put wrapper
+ */
+int get_semaphore(int sem_id, struct sembuf *sembuffer)
+{
+	sembuffer->sem_num = 0;
+	sembuffer->sem_op  = -1;
+	sembuffer->sem_flg = SEM_UNDO;
+	return semop(sem_id, sembuffer, 1);
+}
+
+int put_semaphore(int sem_id, struct sembuf *sembuffer)
+{
+	sembuffer->sem_num = 0;
+	sembuffer->sem_op  = 1;
+	sembuffer->sem_flg = SEM_UNDO;
+	return semop(sem_id, sembuffer, 1);
+}
+
+/* memory sharing mode */
+enum shared_mode {
+	MMAP_SHARED = 0,
+	IPV_SHARED  = 1,
+};
+
+/*
+ * testcase for shared pages, where
+ *  if early_kill == 0, parent access the shared page hwpoisoned by child, and
+ *  if early_kill == 1, parent will be killed by SIGBUS from child.
+ * This testcase checks whether if a shared page is hwpoisoned by one process,
+ * another process sharing the page will be killed expectedly.
+ */
+static void do_shared(int shared_mode)
+{
+	int shm_id, sem_id, semaphore;
+	pid_t pid;
+	char *shared_page;
+	struct sembuf sembuffer;
+
+	if (shared_mode == MMAP_SHARED) {
+		shared_page = checked_mmap(NULL, PS, PROT_READ|PROT_WRITE,
+				MAP_SHARED|MAP_ANONYMOUS|MAP_POPULATE, 0, 0);
+	} else if (shared_mode == IPV_SHARED) {
+		shm_id = shmget(IPC_PRIVATE, PS, 0666|IPC_CREAT);
+		if (shm_id == -1)
+			err("shmget");
+	} else {
+		printf("XXX: invalid shared_mode\n");
+		return;
+	}
+
+	if (early_kill) {
+		sem_id = semget(IPC_PRIVATE, 1, 0666|IPC_CREAT);
+		if (sem_id == -1)
+			err("semget");
+		semaphore = semctl(sem_id, 0, SETVAL, 1);
+		if (semaphore == -1)
+			err("semctl");
+		if (get_semaphore(sem_id, &sembuffer))
+			err("get_semaphore");
+	}
+
+	pid = fork();
+	if (pid < 0)
+		err("fork");
+
+	if (shared_mode == IPV_SHARED) {
+		shared_page = shmat(shm_id, NULL, 0);
+		if (shared_page == (char *)-1)
+			err("shmat");
+	}
+
+	memset(shared_page, 'a', 3);
+
+	if (early_kill) {
+		struct sigaction sa = {
+			.sa_sigaction = sighandler,
+			.sa_flags = SA_SIGINFO
+		};
+		sigaction(SIGBUS, &sa, NULL);
+		expected_addr = shared_page;
+	}
+
+	if (pid) {
+		if (early_kill && sigsetjmp(early_recover_ctx, 1) == 0) {
+			if (put_semaphore(sem_id, &sembuffer))
+				err("get_semaphore");
+			/* waiting for SIGBUS from child */
+			sleep(10);
+		printf("XXX timeout: child process does not send signal.");
+			failure++;
+			return;
+		}
+		siginfo_t sig;
+		waitid(P_PID, pid, &sig, WEXITED);
+
+		/*
+		 * check child termination status
+		 * late kill       : child should exit
+		 * suicide version : child should be killed by signal
+		 * early kill      : child should be killed by signal
+		 */
+		if (!early_kill) {
+			struct sigaction sigact;
+			sigaction(SIGBUS, NULL, &sigact);
+
+			if (sigact.sa_handler == SIG_DFL) {/* suicide version */
+				if (sig.si_code != CLD_KILLED)
+					goto child_error;
+			} else { /* late kill */
+				if (sig.si_code != CLD_EXITED)
+					goto child_error;
+			}
+		} else { /* early kill */
+			if (sig.si_code != CLD_EXITED)
+				goto child_error;
+		}
+
+		if (!early_kill)
+			recover("ipv shared page (parent)",
+				shared_page, MWRITE);
+
+		if (shared_mode == IPV_SHARED && shmdt(shared_page) == -1)
+			err("shmdt");
+	}
+
+	if (!pid) {
+		if (early_kill)
+			if (get_semaphore(sem_id, &sembuffer))
+				err("get_semaphore");
+		testmem("ipv shared page", shared_page, MWRITE);
+
+		if (shared_mode == IPV_SHARED && shmdt(shared_page) == -1)
+			err("shmdt");
+
+		_exit(0);
+	}
+
+	return;
+
+child_error:
+	printf("XXX child process was terminated unexpectedly\n");
+	failure++;
+	return;
+}
+
+static void mmap_shared(void)
+{
+	do_shared(MMAP_SHARED);
+}
+
+static void ipv_shared(void)
+{
+	do_shared(IPV_SHARED);
+}
 
 struct testcase {
 	void (*f)(void);
@@ -512,6 +670,8 @@ struct testcase {
 	{ file_clean_mlocked, "file clean mlocked", 1 },
 	{ file_dirty_mlocked, "file dirty mlocked"},
 	{ nonlinear, "nonlinear" },
+	{ mmap_shared, "mmap shared" },
+	{ ipv_shared, "ipv shared" },
 	{},	/* dummy 1 for sniper */
 	{},	/* dummy 2 for sniper */
 	{}
