@@ -45,6 +45,13 @@ guide and how to add new test cases into test suite.
   make
   sudo make install
 
+- Install page-types tool (sec 3.4), which is accompanied with Linux kernel
+  source (2.6.32 or newer).
+
+  cd $KERNEL_SRC/Documentation/vm/
+  gcc -o page-types page-types.c
+  cp page-types /usr/bin/
+
 - Run make test-simple
   This will do the basic tests, but not the more complicated kdump ones.
   For more information on those read below.
@@ -101,14 +108,13 @@ reboot (for kdump)		indicate there is a reboot between test
 				case trigger and test case verify, some
 				context has been gone.
 
-Several test case classes are provided with the test suite. They are
-all based on mce-inject MCE software injection tool, and follows same
-structure.
+Several test case classes are provided with the test suite. 
+cases/soft-inj/* is based on mce-inject MCE software injection tool.
+cases/apei-inj/* is based on apei-inj APEI haredware injection tool.
 
-cases/soft-inj/<class name>/cases.sh	Interface of the test case class
-cases/soft-inj/<class name>/data/	Directory contains data file for
-					mce-inject tool.
-cases/soft-inj/<class name>/refer/	Directory contains data file for
+cases/<injection tool>/<class name>/cases.sh	Interface of the test case class
+cases/<injection tool>/<class name>/data/	Directory contains data file
+cases/<injection tool>/<class name>/refer/	Directory contains data file for
 					reference MCE records if necessary.
 
 For document of various test cases, please refer to doc/cases/*.
@@ -169,13 +175,13 @@ Additional test result for various test cases will go
 "results/<driver_name>/<case_name>/<xxx>. For in-package test case
 class, additional test results include:
 
-results/<driver_name>/soft-inject/<case_name>/klog
+results/<driver_name>/<injection_tool>/<case_name>/klog
 				Kernel log during testing
-results/<driver_name>/soft-inject/<case_name>/mcelog
+results/<driver_name>/<injection_tool>/<case_name>/mcelog
 				mcelog output during testing
-results/<driver_name>/soft-inject/<case_name>/mcelog_refer
+results/<driver_name>/<injection_tool>/<case_name>/mcelog_refer
 				mcelog output reference
-results/<driver_name>/soft-inject/<case_name>/mce_64.c.gcov (for gcov)
+results/<driver_name>/<injection_tool>/<case_name>/mce_64.c.gcov (for gcov)
 				gcov output file
 
 
@@ -214,6 +220,10 @@ been merged by LTP cvs. For more information please refer to gcovdump
 document. The latest gcovdump can be gotten from cvs:
 http://ltp.cvs.sourceforge.net/viewvc/ltp/utils/analysis/gcov-kdump/.
 
+3.4 page-types
+A tool to query page types, which is accompanied with Linux kernel 
+source (2.6.32 or newer, $KERNEL_SRC/Documentation/vm/page-types.c).
+It is required for MCE apei-inj testing. 
 
 4. Usage Guide
 --------------
@@ -241,6 +251,7 @@ a. Linux kernel and user space tools as follow should be installed
    - A Linux kernel with full MCE injection support (see 0)
    - mce-inject tool (see 3.1)
    - mcelog with proper version (see 3.2)
+   - page-types (see 3.4)
 
 b. Modify config/simple.conf or create a new test configuration
    file. Refer to section 2.3 for more instruction about test

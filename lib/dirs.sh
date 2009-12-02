@@ -12,6 +12,7 @@ RCONF_DIR=config
 RRDIR=results
 RWDIR=work
 RLDIR=lib
+APEI_IF=/debug/apei/einj
 
 SDIR=$(script_dir)
 CDIR=$ROOT/cases
@@ -19,3 +20,4 @@ CONF_DIR=$ROOT/config
 RDIR=$ROOT/results/$driver
 WDIR=$ROOT/work/$driver
 LDIR=$ROOT/lib
+TDIR=$ROOT/tools
