@@ -1,15 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-void main(void)
+int main(void)
 {
     void *p = malloc(128);
     memset(p, 0, 128);
-    printf("alloc 128 mem\n"); 
+    printf("allocating 128 bytes of memory\n"); 
     while (1)
     {
       sleep(1);
     }
+    return 0;
 }
 
 
