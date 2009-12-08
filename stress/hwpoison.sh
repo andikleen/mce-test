@@ -165,6 +165,8 @@ setup_errinj()
 	if [ $g_madvise -eq 1 ]; then
 		[ -f "$debugfs/hwpoison/corrupt-filter-enable" ] && echo 0 > $debugfs/hwpoison/corrupt-filter-enable
 		return
+	else
+		[ -f "$debugfs/hwpoison/corrupt-filter-enable" ] && echo 1 > $debugfs/hwpoison/corrupt-filter-enable
 	fi	
 	if [ $g_netfs -eq 0 ]; then
 		dev_major=0x`/usr/bin/stat --format=%t $g_dev` > /dev/null 2>&1
