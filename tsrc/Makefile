@@ -11,6 +11,8 @@ EXEKERNEL := tring ttable
 OBJ := $(addsuffix .o,${EXE})
 OBJKERNEL := $(addsuffix .o,${EXEKERNEL})
 
+.PHONY: clean distclean see test hard soft standalone
+
 all: standalone
 
 standalone: ${EXE}
@@ -44,8 +46,23 @@ tinjpage: LDFLAGS += -lpthread
 clean:
 	rm -f ${EXE} ${OBJ}
 	rm -f ${EXEKERNEL} ${OBJKERNEL}
-	rm -f x.html
+	rm -f x.html unpoison-failed offlined
 
 distclean: clean
+
+test: soft hard
+
+hard: standalone
+	./tinjpage
+	./tsimpleinj
+	if ! ./tkillpoison ; then echo "killed as expected" ; exit 0 ; else echo "didn't get killed" ; exit 1 ; fi
+	./tprctl
+
+soft: standalone
+	./tsoft
+	./tsoftinj
+	echo "Running soft offliner for 60 seconds"
+	./random_offline -t 60
+
 
 

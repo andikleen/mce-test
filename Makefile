@@ -24,7 +24,9 @@ test:
 	$(MAKE) reset
 	./drivers/simple/driver.sh simple.conf
 	./drivers/kdump/driver.sh kdump.conf
+	$(MAKE) -C tsrc test
 
 test-simple:
 	$(MAKE) reset
 	./drivers/simple/driver.sh simple.conf
+	$(MAKE) -C tsrc test
