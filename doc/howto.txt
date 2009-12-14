@@ -52,7 +52,7 @@ guide and how to add new test cases into test suite.
   gcc -o page-types page-types.c
   cp page-types /usr/bin/
 
-- Run make test-simple
+- Run make test
   This will do the basic tests, but not the more complicated kdump ones.
   For more information on those read below.
 
@@ -268,7 +268,8 @@ d. It is recommended to stop cron before testing. Because there
 e. To be root and invoke simple test driver on test configuration file
    as follow
 
-       drivers/simple/driver.sh config/simple.conf
+       Run "make test" to do all the standard tests that do not require
+       special set up.
 
 f. General test result will go results/simple/result. Test log will go
    work/simple/log. Additional test results for various test cases
@@ -362,7 +363,7 @@ g. Create a new test configuration file or use a existing one in
 
 h. Run "make". Carefully check for any errors.
 
-i. To be root and run "drivers/kdump/driver.sh <conf>"
+i. To be root and run "drivers/kdump/driver.sh <conf>" or "make test-kdump" (for a full test)
 
 j. After test is done, the test log of the last run of kdump driver will
    be displayed on main console.

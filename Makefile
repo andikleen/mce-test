@@ -1,3 +1,4 @@
+.PHONY:	test clean distclean reset test-simple test-kdump
 
 all:
 	$(MAKE) -C tools
@@ -20,13 +21,16 @@ reset:
 	rm -rf work/*
 	rm -rf results/*
 
-test:
-	$(MAKE) reset
-	./drivers/simple/driver.sh simple.conf
-	./drivers/kdump/driver.sh kdump.conf
-	$(MAKE) -C tsrc test
+test: test-simple
 
 test-simple:
 	$(MAKE) reset
 	./drivers/simple/driver.sh simple.conf
+	$(MAKE) -C tsrc test
+
+# requires special packages to be installed
+test-kdump:
+	$(MAKE) reset
+	./drivers/simple/driver.sh simple.conf
+	./drivers/kdump/driver.sh kdump.conf
 	$(MAKE) -C tsrc test
