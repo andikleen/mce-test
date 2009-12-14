@@ -1,0 +1,71 @@
+#!/bin/bash
+# randomly soft offline pages
+
+# fixme: uses time seed, non reproducible
+
+#mount -t debugfs none /debug
+
+THRESH=${1:-1000}
+
+end_of_memory() {
+	for i in /sys/firmware/memmap/* ; do
+		case "$(< $i/type)" in
+		"System RAM") ;;
+		*) continue ;;
+		esac
+	
+		k=$(< $i/end)
+		k=${k/0x/}
+		k=$(echo $k | tr a-z A-Z)
+
+		echo "ibase=16; $k/1000" | bc
+	done | sort -n | tail -n1
+}
+
+E=$(end_of_memory)
+
+echo "soft offlining pages upto $E" 
+
+unpoison() { 
+	if [ ! -f offlined ] ; then
+		return
+	fi
+	
+	echo unpoisioning
+	while read i ; do 
+		#echo -n ,
+		#echo "u $i"
+	 	echo $i | sed 's/000$//' > /debug/hwpoison/unpoison-pfn \
+			|| echo "unpoisioning $i failed: $?"
+	done < offlined
+	echo done
+	echo
+}
+
+trap unpoison 0
+
+(( k = 0 ))
+rm -f offlined
+while true ; do 
+	T=$( 
+	R=$RANDOM
+	X=$(echo "obase=16; ($R%$E)*4096"  | bc)
+	echo 0x$X
+	) 
+	#echo "p $T" 
+	if echo 2>/dev/null $T >/sys/devices/system/memory/soft_offline_page ; then
+		echo $T >> offlined
+	else
+		#echo offlining $T failed $?
+		true
+	fi
+	#echo -n . 
+
+	(( k++ )) 
+	if [ $k -gt $THRESH ] ; then
+		unpoison
+		(( k = 0 ))
+		rm offlined
+	fi
+done	
+
