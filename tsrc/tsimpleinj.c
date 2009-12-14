@@ -1,6 +1,9 @@
 /* 
  * Test program for Linux memory error recovery. 
  * Requires special injection support.
+ * 
+ * This is a early primitive version of tinjpage.c,
+ * but simpler to debug in some cases.
  */
 #define _GNU_SOURCE 1
 #include <sys/mman.h>
