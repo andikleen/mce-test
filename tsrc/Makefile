@@ -64,5 +64,8 @@ soft: standalone
 	echo "Running soft offliner for 60 seconds"
 	./random_offline -t 60
 
+test-kernel: tcases
+	./tcases
+
 
 
