@@ -5,7 +5,7 @@ CFLAGS += -I ${LSRC}/arch/x86/kernel/cpu/mcheck/ -g -Wall
 
 KFLAGS := -I ./kinclude
 
-EXE := tinjpage tinjpage-working tkillpoison tprctl tsoft tsoftinj
+EXE := tinjpage tsimpleinj tkillpoison tprctl tsoft tsoftinj
 EXEKERNEL := tring ttable
 
 OBJ := $(addsuffix .o,${EXE})
