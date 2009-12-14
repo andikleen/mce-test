@@ -1,18 +1,58 @@
 #!/bin/bash
 # randomly soft offline pages
+# random_offline options
+# -t seconds   runtime in seconds (default unlimited)
+# -m max-pages maximum pages to tie up before unpoisoning
+# -s seed      random seed
+# Note: running this for too long may still run out of memory
+# because unpoison cannot completely undo what soft offline
+# does to larger free memory areas (TBD in the kernel)
+# Author: Andi Kleen
 
 # fixme: uses time seed, non reproducible
 
 #mount -t debugfs none /debug
 
-THRESH=${1:-1000}
+THRESH=1000
+SEED=""
+RUNTIME=""
+DEBUG=/sys/kernel/debug
+
+fail() { 
+	echo "ERROR: $@"
+	exit 0
+}
+
+usage() { 
+	echo "Usage:"
+	echo "random_offline options"
+	echo -- "-t seconds   runtime in seconds (default unlimited)"
+	echo -- "-m max-pages maximum pages to tie up before unpoisoning"
+	echo -- "-s seed      random seed"
+	fail "Invalid option $1"
+}
+
+while getopts "t:m:s:" option ; do
+	case "$option" in 
+	t) RUNTIME=$OPTARG ;;
+	m) THRESH=$OPTARG ;;
+	s) SEED=$OPTARG ;;
+	*) usage $option ;;
+	esac
+done
+
+[ "$(whoami)" != root ] && fail "Not root"
+[ ! -d $DEBUG/hwpoison ] && mount -t debugfs none $DEBUG
+[ ! -d $DEBUG/hwpoison ] && fail "No debugfs"
+[ ! -w /sys/devices/system/memory/soft_offline_page ] && fail "No soft offlining support in kernel"
+[ ! -w $DEBUG/hwpoison/unpoison-pfn ] && fail "no unpoison support in kernel"
 
 end_of_memory() {
 	for i in /sys/firmware/memmap/* ; do
 		case "$(< $i/type)" in
 		"System RAM") ;;
 		*) continue ;;
-		esac
+		esac	
 	
 		k=$(< $i/end)
 		k=${k/0x/}
@@ -35,8 +75,10 @@ unpoison() {
 	while read i ; do 
 		#echo -n ,
 		#echo "u $i"
-	 	echo $i | sed 's/000$//' > /debug/hwpoison/unpoison-pfn \
-			|| echo "unpoisioning $i failed: $?"
+	 	if ! echo $i | sed 's/000$//' > $DEBUG/hwpoison/unpoison-pfn ; then
+			echo "$i $?" >> unpoison-failed
+			echo "unpoisioning $i failed: $?"
+		fi
 	done < offlined
 	echo done
 	echo
@@ -44,8 +86,18 @@ unpoison() {
 
 trap unpoison 0
 
+if [ "$SEED" = "" ] ; then
+	SEED=$(date +%s)
+fi
+RANDOM=$SEED
+echo "Using random seed $SEED"
+
+start=$(date +%s)
+failed=0
+ufailed=0
+
 (( k = 0 ))
-rm -f offlined
+rm -f offlined unpoison-failed
 while true ; do 
 	T=$( 
 	R=$RANDOM
@@ -57,6 +109,7 @@ while true ; do
 		echo $T >> offlined
 	else
 		#echo offlining $T failed $?
+		(( failed++ ))
 		true
 	fi
 	#echo -n . 
@@ -67,5 +120,19 @@ while true ; do
 		(( k = 0 ))
 		rm offlined
 	fi
+
+	((DIFF = $(date +%s) - $start))
+	if [ ! -z "$RUNTIME" -a $DIFF -gt "$RUNTIME" ] ; then
+		echo time over
+		break
+	fi
 done	
+
+if [ -f unpoison-failed ] ; then
+	ufailed=$(wc -l unpoison-failed | awk ' {print $1}')
+fi
+echo "soft-poison-failed: $failed"
+echo "unpoison-failed:    $ufailed"
+
+### xxx automatic success/failure criteria?
 
