@@ -44,6 +44,7 @@ tinjpage: LDFLAGS += -lpthread
 clean:
 	rm -f ${EXE} ${OBJ}
 	rm -f ${EXEKERNEL} ${OBJKERNEL}
+	rm -f x.html
 
 distclean: clean
 
