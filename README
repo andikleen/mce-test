@@ -90,6 +90,11 @@ Test Instruction
 
 Please refer to corresponding section in doc/howto.txt.
 
+Very quick way to test this:
+	be root
+	make sure you have a kernel with CONFIG_X86_MCE_INJECT
+	and CONFIG_HWPOISON_INJECT and soft-offlining support
+	run "make test"
 
 Futher Information
 ------------------
