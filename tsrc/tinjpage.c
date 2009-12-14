@@ -2,6 +2,8 @@
  * Test program for Linux poison memory error recovery.
  * This injects poison into various mapping cases and triggers the poison
  * handling.  Requires special injection support in the kernel.
+ * 
+ * Copyright 2009 Intel Corporation
  *
  * tinjpage is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public
