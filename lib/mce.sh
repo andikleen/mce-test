@@ -298,8 +298,15 @@ get_tolerant()
     cat /sys/devices/system/machinecheck/machinecheck0/tolerant
 }
 
+check_debugfs()
+{
+    [ ! -d /sys/kernel/debug/mce ] && mount -t debugfs none /sys/kernel/debug
+    [ ! -d /sys/kernel/debug/mce ] && die "Kernel without CONFIG_X86_MCE_INJECT?"
+}
+
 set_fake_panic()
 {
+    check_debugfs
     [ $# -eq 1 ] || die "missing parameter for set_fake_panic"
     echo -n $1 > /sys/kernel/debug/mce/fake_panic
 }
