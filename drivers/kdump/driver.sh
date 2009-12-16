@@ -109,8 +109,9 @@ dump_gcov()
 	return
     fi
     if ! chk_gcov; then
-	echo "gcov is not supported by kernel, or there is no " \
-	    "gcov utility installed, disable gcov support."
+	echo "gcov is not supported by kernel or there is no " \
+	    "gcov utility installed"
+	echo "disabling gcov support"
 	unset GCOV
 	return
     fi

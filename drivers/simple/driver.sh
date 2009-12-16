@@ -58,8 +58,9 @@ test_all()
 	    export GCOV=copy
 	    export KSRC_DIR
 	else
-	    echo "gcov is not supported by kernel, or there is no " \
-		"gcov utility installed, disable gcov support."
+	    echo "gcov is not supported by kernel or there is no " \
+		"gcov utility installed"
+	    echo "disabling gcov support."
 	    unset GCOV
 	fi
     fi
