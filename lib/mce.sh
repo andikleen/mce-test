@@ -300,13 +300,23 @@ get_tolerant()
 
 check_debugfs()
 {
-    [ ! -d /sys/kernel/debug/mce ] && mount -t debugfs none /sys/kernel/debug
-    [ ! -d /sys/kernel/debug/mce ] && die "Kernel without CONFIG_X86_MCE_INJECT?"
+	mount|grep debugfs
+	[ ! $? -eq 0 ] && mount -t debugfs none /sys/kernel/debug
+	mount|grep debugfs
+	[ ! $? -eq 0 ] && die "Kernel without debugfs support ?"
+}
+
+# should be called after check_debugfs
+check_mce()
+{
+    DEBUGFS=`mount | grep debugfs | cut -d ' ' -f3`
+    [ ! -d ${DEBUGFS}/mce ] && die "Kernel without CONFIG_X86_MCE_INJECT ?"
 }
 
 set_fake_panic()
 {
     check_debugfs
+    check_mce
     [ $# -eq 1 ] || die "missing parameter for set_fake_panic"
     echo -n $1 > /sys/kernel/debug/mce/fake_panic
 }
