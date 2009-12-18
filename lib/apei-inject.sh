@@ -14,7 +14,7 @@ if [ -n "$this_case" ]; then
 fi
 mcelog_result=$RDIR/$this_case/mcelog
 klog=$RDIR/$this_case/klog
-
+APEI_IF=`mount | grep debugfs | cut -d ' ' -f3`/apei/einj
 
 apei_mce_reformat()
 {
@@ -84,6 +84,7 @@ apei_inject_enumerate()
 
 apei_inject_trigger()
 {
+    check_debugfs
     mcelog &> /dev/null
     TYPE=`awk '/^TYPE/{print $2}' $SDIR/data/$bcase`
     echo $TYPE > $APEI_IF/error_type
