@@ -26,7 +26,7 @@ guide and how to add new test cases into test suite.
 
   CONFIG_X86_MCE=y
   CONFIG_X86_MCE_INTEL=y
-  CONFIG_X86_MCE_INJECT=y
+  CONFIG_X86_MCE_INJECT=y or CONFIG_X86_MCE_INJECT=m
 
 - Get mcelog git version from 
   git://git.kernel.org/pub/scm/utils/cpu/mce/mcelog.git.

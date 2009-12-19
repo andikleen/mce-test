@@ -21,6 +21,10 @@
 #
 
 #set -x
+sd=$(dirname "$0")
+export ROOT=`(cd $sd/..; pwd)`
+
+. $ROOT/lib/mce.sh
 
 DEBUG=0
 
@@ -157,16 +161,15 @@ setup_meminfo()
 
 setup_errinj()
 {
-	local debugfs="/sys/kernel/debug"
 	local dev_major=
 	local dev_minor=
 	local rc=0
 
 	if [ $g_madvise -eq 1 ]; then
-		[ -f "$debugfs/hwpoison/corrupt-filter-enable" ] && echo 0 > $debugfs/hwpoison/corrupt-filter-enable
+		[ -f "$g_debugfs/hwpoison/corrupt-filter-enable" ] && echo 0 > $g_debugfs/hwpoison/corrupt-filter-enable
 		return
 	else
-		[ -f "$debugfs/hwpoison/corrupt-filter-enable" ] && echo 1 > $debugfs/hwpoison/corrupt-filter-enable
+		[ -f "$g_debugfs/hwpoison/corrupt-filter-enable" ] && echo 1 > $g_debugfs/hwpoison/corrupt-filter-enable
 	fi	
 	if [ $g_netfs -eq 0 ]; then
 		dev_major=0x`/usr/bin/stat --format=%t $g_dev` > /dev/null 2>&1
@@ -178,10 +181,10 @@ setup_errinj()
 		dev_major=0
 		dev_minor=0
 	fi
-	echo $dev_major > $debugfs/hwpoison/corrupt-filter-dev-major
-	echo $dev_minor > $debugfs/hwpoison/corrupt-filter-dev-minor
-	[ $g_pgtype = "all" -a -f "$debugfs/hwpoison/corrupt-filter-flags-mask" ] && echo 0 > $debugfs/hwpoison/corrupt-filter-flags-mask
-	[ -f "$debugfs/hwpoison/corrupt-filter-enable" ] && echo 1 > $debugfs/hwpoison/corrupt-filter-enable
+	echo $dev_major > $g_debugfs/hwpoison/corrupt-filter-dev-major
+	echo $dev_minor > $g_debugfs/hwpoison/corrupt-filter-dev-minor
+	[ $g_pgtype = "all" -a -f "$g_debugfs/hwpoison/corrupt-filter-flags-mask" ] && echo 0 > $g_debugfs/hwpoison/corrupt-filter-flags-mask
+	[ -f "$g_debugfs/hwpoison/corrupt-filter-enable" ] && echo 1 > $g_debugfs/hwpoison/corrupt-filter-enable
 	return
 }
 
@@ -208,9 +211,8 @@ setup_fs()
 
 check_env()
 {
-	local debugfs="/sys/kernel/debug"
-
-	silent_exec mount -t debugfs null $debugfs 
+	check_debugfs
+	g_debugfs=`mount | grep debugfs | cut -d ' ' -f3`
 	[ -z "$g_tty" ] && invalid "$g_tty does not exist"
 	[ -z "$g_dev" ] && invalid "device is not specified"
 	if [ $g_fstype = "nfs" -o $g_fstype = "cifs" ]; then
@@ -226,10 +228,12 @@ check_env()
 		dbp "Found the tool: $g_pagetool"
 	fi	
 	if [ $g_pfninj -eq 1 ]; then
-		[ -d $debugfs/hwpoison/ ] || invalid "pls. insmod hwpoison_inject module"
+		[ -d $g_debugfs/hwpoison/ ] || modprobe hwpoison_inject
+		[ $? -eq 0 ] || die "module hwpoison_inject isn't supported ?"
 	fi
 	if [ $g_apei -eq 1 ]; then
-		[ -d $debugfs/apei/ ] || invalid "pls. insmod apei_inj module"
+		[ -d $g_debugfs/apei/ ] || modprobe einj
+		[  $? -eq 0 ] || die "module apei_inj isn't supported ?"
 	fi
 	[ -d $g_ltproot -a -f $g_ltppan ] || invalid "no ltp-pan on the machine: $g_ltppan"
 	if [ $g_runltp -eq 1 ]; then 
@@ -466,13 +470,12 @@ _pfn_inj()
 {
 	local pg=$1
 
-	echo $pg > $debugfs/hwpoison/corrupt-pfn
-	dbp "echo $pg > $debugfs/hwpoison/corrupt-pfn"
+	echo $pg > $g_debugfs/hwpoison/corrupt-pfn
+	dbp "echo $pg > $g_debugfs/hwpoison/corrupt-pfn"
 }
 
 pfn_inj()
 {
-	local debugfs="/sys/kernel/debug"
 	local pg_list=
 	local pg=0
 	local pfn=0
@@ -518,9 +521,9 @@ _apei_inj()
 	local pfn=`printf "%x" $1`
 	local type=$2
 
-	echo $type > $debugfs/apei/einj/error_type
-	echo "0x${pfn}000" > $debugfs/apei/err_inj/error_address
-	echo "1" > $debugfs/apei/einj/error_inject
+	echo $type > $g_debugfs/apei/einj/error_type
+	echo "0x${pfn}000" > $g_debugfs/apei/err_inj/error_address
+	echo "1" > $g_debugfs/apei/einj/error_inject
 }
 
 apei_ewb_ucr()
@@ -535,7 +538,6 @@ apei_mem_ucr()
 
 apei_inj()
 {
-	local debugfs="/sys/kernel/debug"
 	local pg_list=
 	local pg=
 	local cur=
@@ -808,6 +810,7 @@ select_injector()
 }
 
 g_dev=
+g_debugfs=
 g_testdir="/hwpoison"
 g_fstype=ext3
 g_netfs=0

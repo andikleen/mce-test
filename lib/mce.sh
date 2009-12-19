@@ -300,9 +300,9 @@ get_tolerant()
 
 check_debugfs()
 {
-	mount|grep debugfs
+	mount|grep debugfs > /dev/null 2>&1
 	[ ! $? -eq 0 ] && mount -t debugfs none /sys/kernel/debug
-	mount|grep debugfs
+	mount|grep debugfs > /dev/null 2>&1
 	[ ! $? -eq 0 ] && die "Kernel without debugfs support ?"
 }
 
