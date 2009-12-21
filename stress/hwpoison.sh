@@ -820,7 +820,6 @@ let "g_duration=120"
 g_interval=5
 g_runltp=0
 g_ltproot="/ltp"
-g_ltppan="$g_ltproot/pan/ltp-pan"
 g_pagetool="page-types"
 g_madvise=0
 g_apei=0
@@ -857,7 +856,8 @@ do
 		l) g_logfile=$OPTARG;;
 		t) g_duration=$OPTARG;;
 		i) g_interval=$OPTARG;;
-		o) g_ltproot=$OPTARG;;
+		o) g_ltproot=$OPTARG
+		   g_ltppan="$g_ltproot/ltp-pan";;
 		p) g_pgtype=$OPTARG;;
 		s) g_pgsize=$OPTARG;;
 		r) g_result=$OPTARG;;
