@@ -47,6 +47,7 @@ clean:
 	rm -f ${EXE} ${OBJ}
 	rm -f ${EXEKERNEL} ${OBJKERNEL}
 	rm -f x.html unpoison-failed offlined
+	rm -f ~test* ~poison*
 
 distclean: clean
 

@@ -220,7 +220,7 @@ int tempfd(void)
 {
 	int fd;
 	char buf[PATHBUFLEN];
-	snprintf(buf, sizeof buf, TMPDIR "poison%d",tmpcount++);
+	snprintf(buf, sizeof buf, TMPDIR "~poison%d",tmpcount++);
 	fd = open(buf, O_CREAT|O_RDWR, 0600);
 	if (fd >= 0)
 		unlink(buf);
@@ -233,7 +233,7 @@ int playfile(char *buf)
 {
 	int fd;
 	if (buf[0] == 0)
-		snprintf(buf, PATHBUFLEN, TMPDIR "poison%d", tmpcount++);
+		snprintf(buf, PATHBUFLEN, TMPDIR "~poison%d", tmpcount++);
 	fd = open(buf, O_CREAT|O_RDWR|O_TRUNC, 0600);
 	if (fd < 0)
 		err("opening temporary file in " TMPDIR);
@@ -275,7 +275,7 @@ static void do_file_clean(int flags, char *name)
 {
 	char *page;
 	char fn[30];
-	snprintf(fn, 30, TMPDIR "test%d", tmpcount++);
+	snprintf(fn, 30, TMPDIR "~test%d", tmpcount++);
 	int fd = open(fn, O_RDWR|O_TRUNC|O_CREAT);
 	if (fd < 0)
 		err("open temp file");

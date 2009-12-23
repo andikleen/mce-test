@@ -31,6 +31,7 @@
 #define MADV_SOFT_OFFLINE 101
 
 #define err(x) perror(x), exit(1)
+#define TMPDIR "./"
 
 int PS;
 int exitcode;
@@ -91,7 +92,7 @@ void offline(char *name, void *p)
 void disk_backed(char *name, int flags)
 {
 	char fn[100];
-	snprintf(fn, sizeof fn, "t%u", getpid());
+	snprintf(fn, sizeof fn, TMPDIR "~test%u", getpid());
 	printf("shared, diskbacked\n");
 	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, 0644);
 	if (fd < 0) err("open tmpfile");

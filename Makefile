@@ -16,6 +16,7 @@ distclean:
 	$(MAKE) -C tsrc distclean
 	$(MAKE) -C stress distclean
 	$(MAKE) reset
+	rm -rf bin/*
 
 reset:
 	rm -rf work/*

@@ -11,3 +11,4 @@ all:
 clean:
 	$(MAKE) -C tools clean
 	rm -rf bin log result runtest
+distclean: clean
