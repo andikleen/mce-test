@@ -232,6 +232,9 @@ if [ ! -f $WDIR/stamps/setupped ]; then
     exit -1
 fi
 
+[ -d $RDIR ] && mv $RDIR --backup=numbered -T $RDIR.old
+[ -d $WDIR ] && mv $WDIR --backup=numbered -T $WDIR.old
+
 #if mce_inject is a module, it is ensured to have been loaded
 modinfo mce_inject > /dev/null 2>&1
 if [ $? -eq 0 ]; then

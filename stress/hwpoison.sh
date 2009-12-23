@@ -811,7 +811,7 @@ select_injector()
 
 g_dev=
 g_debugfs=
-g_testdir="/hwpoison"
+g_testdir="./hwpoison"
 g_fstype=ext3
 g_netfs=0
 g_nomkfs=0

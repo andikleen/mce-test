@@ -119,6 +119,9 @@ else
     start_background
 fi
 
+[ -d $RDIR ] && mv $RDIR --backup=numbered -T $RDIR.old
+[ -d $WDIR ] && mv $WDIR --backup=numbered -T $WDIR.old
+
 test_all
 
 if [ -n "$STOP_BACKGROUND" ]; then
