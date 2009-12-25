@@ -228,12 +228,20 @@ check_env()
 		dbp "Found the tool: $g_pagetool"
 	fi	
 	if [ $g_pfninj -eq 1 ]; then
-		[ -d $g_debugfs/hwpoison/ ] || modprobe hwpoison_inject
-		[ $? -eq 0 ] || die "module hwpoison_inject isn't supported ?"
+		#if hwpoison_inject is a module, it is ensured to have been loaded
+		modinfo hwpoison_inject > /dev/null 2>&1
+		if [ $? -eq 0 ]; then
+			[ -d $g_debugfs/hwpoison/ ] || modprobe hwpoison_inject
+			[ $? -eq 0 ] || die "module hwpoison_inject isn't supported ?"
+		fi
 	fi
 	if [ $g_apei -eq 1 ]; then
-		[ -d $g_debugfs/apei/ ] || modprobe einj
-		[  $? -eq 0 ] || die "module apei_inj isn't supported ?"
+		#if einj is a module, it is ensured to have been loaded
+		modinfo einj > /dev/null 2>&1
+		if [ $? -eq 0 ]; then
+			[ -d $g_debugfs/apei/einj ] || modprobe einj
+			[  $? -eq 0 ] || die "module apei_inj isn't supported ?"
+		fi
 	fi
 	[ -d $g_ltproot -a -f $g_ltppan ] || invalid "no ltp-pan on the machine: $g_ltppan"
 	if [ $g_runltp -eq 1 ]; then 

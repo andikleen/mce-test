@@ -14,7 +14,6 @@ if [ -n "$this_case" ]; then
 fi
 mcelog_result=$RDIR/$this_case/mcelog
 klog=$RDIR/$this_case/klog
-APEI_IF=`mount | grep debugfs | cut -d ' ' -f3`/apei/einj
 
 apei_mce_reformat()
 {
@@ -85,6 +84,16 @@ apei_inject_enumerate()
 apei_inject_trigger()
 {
     check_debugfs
+    #APEI_IF should be defined after debugfs is mounted
+    APEI_IF=`mount | grep debugfs | cut -d ' ' -f3`/apei/einj
+
+    #if einj is a module, it is ensured to have been loaded
+    modinfo einj > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+	[ -d $APEI_IF ] || modprobe einj
+        [ $? -eq 0 ] || die "module einj isn't supported ?"
+    fi
+
     mcelog &> /dev/null
     TYPE=`awk '/^TYPE/{print $2}' $SDIR/data/$bcase`
     echo $TYPE > $APEI_IF/error_type
