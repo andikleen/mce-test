@@ -309,7 +309,7 @@ check_debugfs()
 # should be called after check_debugfs
 check_mce()
 {
-    DEBUGFS=`mount | grep debugfs | cut -d ' ' -f3`
+    DEBUGFS=`mount | grep debugfs | cut -d ' ' -f3 | head -1`
     [ ! -d ${DEBUGFS}/mce ] && die "Kernel without CONFIG_X86_MCE_INJECT ?"
 }
 
