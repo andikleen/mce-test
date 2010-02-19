@@ -232,15 +232,13 @@ if [ ! -f $WDIR/stamps/setupped ]; then
     exit -1
 fi
 
-[ -d $RDIR ] && mv $RDIR --backup=numbered -T $RDIR.old
-[ -d $WDIR ] && mv $WDIR --backup=numbered -T $WDIR.old
-
 #if mce_inject is a module, it is ensured to have been loaded
-modinfo mce_inject > /dev/null 2>&1
-if [ $? -eq 0 ]; then
-    lsmod | grep mce_inject > /dev/null 2>&1
-    [ $? -eq 0 ] || modprobe mce_inject
-    [ $? -eq 0 ] || die "module mce_inject isn't supported ?"
+if modinfo mce_inject > /dev/null 2>&1; then
+    if ! lsmod | grep -q mce_inject; then
+        if ! modprobe mce_inject; then
+	    die "module mce_inject isn't supported ?"
+        fi
+    fi
 fi
 
 for case_sh in ${CASES}; do
