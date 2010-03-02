@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Simple test driver: run test cases one by one, assuming test case
 # will not trigger panic or reboot.

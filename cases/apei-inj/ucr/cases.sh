@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # APEI injection based test cases : memory patrol scrub cases: test cases
 # are triggered via the apei-inject, and they will not trigger kernel panic.

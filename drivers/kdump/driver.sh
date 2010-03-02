@@ -1,4 +1,4 @@
-#!/bin/sh -xe
+#!/bin/bash -xe
 #
 # Kdump test driver: test case will trigger panic, and then crash
 # dump. The test result is collected via dumped vmcore. For more
@@ -33,7 +33,7 @@ setup_crontab ()
     # crontab in some distros will not read from STDIN.
 
     cat <<EOF > $WDIR/kdump.cron
-SHELL=/bin/sh
+SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
 MAILTO=root
 @reboot cd "$(pwd)"; ${0} $conf >> $WDIR/log 2>&1; cat $WDIR/log > /dev/console
