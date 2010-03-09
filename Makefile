@@ -22,12 +22,16 @@ reset:
 	rm -rf work/*
 	rm -rf results/*
 
-test: test-simple
+test: test-simple test-stress
 
 test-simple:
 	$(MAKE) reset
 	./drivers/simple/driver.sh simple.conf
 	$(MAKE) -C tsrc test
+
+# requires LTP & page-types to be installed
+test-stress:
+	$(MAKE) -C stress test
 
 # requires special packages to be installed
 test-kdump:
