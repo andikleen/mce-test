@@ -726,12 +726,11 @@ static int run_test(int children)
 			err("shmat error\n");
 
 		for (i = 0; i < instance; i++) {
-			int j = i % test_types;
-			int t = ipc->test[j].id;
+			int t = ipc->test[i].id;
 
 			mylog("wait for Pid %d\n", g_pid[i]);
 			waitid(P_PID, g_pid[i], &sig, WEXITED);
-			if (ipc->test[j].result == TEST_PASS)
+			if (ipc->test[i].result == TEST_PASS)
 				result("Ins %d: Pid %d: pass - %s\n", i,
 				      g_pid[i], cases[t].name);
 			else {
