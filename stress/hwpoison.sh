@@ -124,7 +124,7 @@ invalid()
 	echo "[error] !!! $* !!!" >> $g_result 
 	echo "[error] !!! $* !!!" >> $g_logfile 
 	_print -en "\\033[0;39m"    # restore font color to normal
-	exit 0
+	exit 1
 }
 
 result()
@@ -155,9 +155,11 @@ setup_meminfo()
 	highmem_s=`printf "%i" 0x100000000`	# start pfn of highmem > 4G
 	let "g_highmem_s=$highmem_s / $g_pgsize"
 	tmp=`cat /proc/iomem | grep  "System RAM" | grep 100000000- | awk -F "-" '{print $2}' | awk '{print $1}'`
-	highmem_e=`printf "%i" "0x$tmp"`
-	let "g_highmem_e=$highmem_e / $g_pgsize"
-	log "high mem: 0x100000000 (pfn: $g_highmem_s) ~ 0x$tmp (pfn: $g_highmem_e)"
+	if [ -n "$tmp" ]; then
+		highmem_e=`printf "%i" "0x$tmp"`
+		let "g_highmem_e=$highmem_e / $g_pgsize"
+		log "high mem: 0x100000000 (pfn: $g_highmem_s) ~ 0x$tmp (pfn: $g_highmem_e)"
+	fi
 
 	maxmem=`cat /proc/meminfo | grep MemTotal | awk '{print $2}'`
 	let "g_maxpfn= $maxmem / 4"
@@ -233,16 +235,18 @@ check_env()
 	check_debugfs
 	g_debugfs=`mount | grep debugfs | cut -d ' ' -f3`
 	[ -z "$g_tty" ] && invalid "$g_tty does not exist"
-	if [ $g_fstype = "nfs" -o $g_fstype = "cifs" ]; then
-		g_netfs=1
-		[ -z $g_netdev ] && invalid "net device is not specified"
-	fi
-	[ -z "$g_dev" ] && invalid "device is not specified"
-	[ -b $g_dev ] || invalid "invalid device: $g_dev"
-	if [ $g_netfs -eq 0 ]; then
-		df | grep $g_dev > /dev/null 2>&1 && invalid "device $g_dev has been mounted by others"
-	else
-		df | grep $g_netdev > /dev/null 2>&1 && invalid "device $g_netdev has been mounted by others"
+	if [ $g_test -eq 0 ]; then
+		if [ $g_fstype = "nfs" -o $g_fstype = "cifs" ]; then
+			g_netfs=1
+			[ -z $g_netdev ] && invalid "net device is not specified"
+		fi
+		[ -z "$g_dev" ] && invalid "device is not specified"
+		[ -b $g_dev ] || invalid "invalid device: $g_dev"
+		if [ $g_netfs -eq 0 ]; then
+			df | grep $g_dev > /dev/null 2>&1 && invalid "device $g_dev has been mounted by others"
+		else
+			df | grep $g_netdev > /dev/null 2>&1 && invalid "device $g_netdev has been mounted by others"
+		fi
 	fi
 	[ -d $g_bindir ] || invalid "no bin subdir there"
 	if [ $g_madvise -eq 0 -o $g_recycle -ne 0 ]; then
@@ -287,7 +291,7 @@ setup_log()
 	mkdir -p $g_logdir
 	echo "# hwpoison.sh $g_parameter" > $g_logfile
 	echo "# hwpoison.sh $g_parameter" > $g_result
-	clear > $g_tty
+	[ $g_test -eq 0 ] && clear > $g_tty
 	echo "# hwpoison.sh $g_parameter" > $g_tty
 }
 
@@ -299,7 +303,7 @@ setup_env()
 	setup_errinj
 	setup_meminfo
 	trap "cleanup" 0
-	setup_fs
+	[ $g_test -eq 0 ] && setup_fs
 	export PATH="${PATH}:$g_bindir"
 	end "setup test environment"
 }
@@ -358,7 +362,12 @@ fs_metadata()
 	local threads=
 	local node_number=5
 	local tree_depth=6
-	let "threads= $g_duration / 720"
+
+	if [ $g_children -eq 0 ]; then
+		let "threads= $g_duration / 720"
+	else
+		threads=$g_children
+	fi
 	[ $threads -gt 10 ] && threads=10 && node_number=6
 	[ $threads -eq 0 ] && threads=1
 
@@ -435,6 +444,7 @@ page_poisoning()
 	local pan_zoo=$dir/pan_zoo
 	local result=$dir/page_poisoning.result
 	local log=$dir/page_poisoning.log
+	local opts=
 
 	begin "-- launch page_poisoning test"
 	mkdir -p $dir
@@ -446,7 +456,9 @@ page_poisoning()
 	echo -n "" > $result
 	mkdir -p $tmp || err "cannot create dir: $tmp"
 
-	echo "page_poisoning page-poisoning -l $log -r $result -t $tmp" > $g_casedir/page_poisoning
+	[ $g_children -ne 0 ] && opts="-i $g_children"
+
+	echo "page_poisoning page-poisoning -l $log -r $result -t $tmp $opts" > $g_casedir/page_poisoning
 	dbp "$g_ltppan -n page_poisoning -a $pan_zoo -f $g_casedir/page_poisoning -t ${g_duration}s -o $pan_output -l $pan_log -C $pan_failed &"
 	silent_exec_background $g_ltppan -n page_poisoning -a $pan_zoo -f $g_casedir/page_poisoning -t ${g_duration}s -o $pan_output -l $pan_log -C $pan_failed 
 	g_pid_madv=$!
@@ -489,7 +501,7 @@ page_poisoning_result()
 run_workloads()
 {
 	fs_metadata
-	fs_specific
+	#fs_specific
 	return
 }
 
@@ -809,7 +821,7 @@ result_check()
 		fs_metadata_result
 		[ $g_runltp -eq 1 ] && ltp_result
 	fi
-	[ $g_netfs -eq 0 ] && fsck_result
+	[ $g_netfs -eq 0 -a $g_test -eq 0 ] && fsck_result
 	result ""
 	result "totally $g_failed task-groups report failures"
 	result "#############################################"
@@ -833,12 +845,14 @@ usage()
 	echo -e "\t-s pagesize\t: page size on the system (default is $g_pgsize bytes)"
 	echo -e "\t-t duration\t: test duration time (default is $g_duration seconds)"
 	echo -e "\t-A \t\t: use APEI to inject error"
+	echo -e "\t-C children\t: process num of workloads"
 	echo -e "\t-F \t\t: execute as force mode, no interaction with user"
 	echo -e "\t-L \t\t: run ltp in background"
 	echo -e "\t-M \t\t: run page_poisoning test thru madvise syscall"
 	echo -e "\t-N \t\t: do not mkfs target block device"
 	echo -e "\t-R recyle\t: automatically unpoison pages after running recyle seconds"
 	echo -e "\t-S \t\t: test soft page offline"
+	echo -e "\t-T \t\t: test mode, run test in local dir other than on target device"
 	echo -e "\t-V \t\t: verbose mode, show debug info"
 	echo -e "\t-h \t\t: print this page"
 	echo
@@ -916,12 +930,26 @@ cleanup()
 	log "!!! Linux HWPOISON stress testing DONE !!!"
 	log "result: $g_result"
 	log "log: $g_logfile"
-	[ $g_failed -ne 0 ] && exit 1
+	if [ $g_failed -ne 0 ]; then
+		exit 1
+	else
+		exit 0
+	fi
 }
 
 select_injector()
 {
-# apei injector is 1st priority.
+# for test mode, apei injector is not supported.
+	if [ $g_test -eq 1 ]; then
+		[ $g_apei -eq 1 ] && g_apei=0
+		if [ $g_madvise -eq 1 ]; then
+			g_pfninj=0
+		else
+			g_soft_offline=1
+		fi
+	fi
+
+# for non-test mode, apei injector is 1st priority.
 	if [ $g_apei -eq 1 ]; then
 		g_pfninj=0
 		g_madvise=0
@@ -932,6 +960,7 @@ select_injector()
 	fi
 }
 
+g_children=	# process num of workloads.
 g_dev=
 g_debugfs=
 g_netdev=
@@ -974,6 +1003,7 @@ g_lowmem_s=	# start pfn of mem < 4G
 g_lowmem_e=	# end pfn of mem < 4G
 g_sysfs_mem="/sys/devices/system/memory"
 g_soft_offline=0
+g_test=0
 
 # recyle poisoned page
 g_recycle=0
@@ -987,7 +1017,7 @@ g_vm_dirty_expire_centisecs=`cat /proc/sys/vm/dirty_expire_centisecs`
 # test parameters
 g_parameter=$@
 
-while getopts ":c:d:f:hi:l:n:o:p:r:s:t:LMR:SAFNV" option
+while getopts ":c:d:f:hi:l:n:o:p:r:s:t:C:LMR:STAFNV" option
 do 
 	case $option in
 		c) g_tty=$OPTARG;;
@@ -1002,10 +1032,12 @@ do
 		p) g_pgtype=$OPTARG;;
 		s) g_pgsize=$OPTARG;;
 		r) g_result=$OPTARG;;
+		C) g_children=$OPTARG;;
 		L) g_runltp=1;; 
 		M) g_madvise=1;;
 		R) g_recycle=$OPTARG;;
 		S) g_soft_offline=1;;
+		T) g_test=1;;
 		A) g_apei=1;;
 		F) g_force=1;;
 		N) g_nomkfs=1;;
@@ -1025,4 +1057,4 @@ if [ $g_madvise -eq 0 ]; then
 	run_workloads
 fi
 err_inject
-[ $g_netfs -eq 0 ] &&  run_fsck
+[ $g_netfs -eq 0 -a $g_test -eq 0 ] &&  run_fsck
