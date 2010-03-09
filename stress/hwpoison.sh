@@ -240,7 +240,7 @@ check_env()
 		df | grep $g_netdev > /dev/null 2>&1 && err "device $g_netdev has been mounted by others"
 	fi
 	[ -d $g_bindir ] || invalid "no bin subdir there"
-	if [ $g_madvise -eq 0 ]; then
+	if [ $g_madvise -eq 0 -o $g_recycle -ne 0 ]; then
 		silent_exec which $g_pagetool || err "no $g_pagetool tool on the system"
 		g_pagetool=`which $g_pagetool`
 		dbp "Found the tool: $g_pagetool"
@@ -257,6 +257,9 @@ check_env()
 			fi
 		fi
 	fi
+	[ $g_recycle -ne 0 ] && {
+	        [ -f $g_debugfs/hwpoison/unpoison-pfn ] || invalid "pls. insmod hwpoison_inject module with unpoison-pfn support"
+	}
 	if [ $g_apei -eq 1 ]; then
 		#if einj is a module, it is ensured to have been loaded
 		modinfo einj > /dev/null 2>&1
@@ -482,6 +485,30 @@ run_workloads()
 	return
 }
 
+_pfn_unpoison()
+{
+	local pg=$1
+
+	echo $pg > $g_debugfs/hwpoison/unpoison-pfn
+	dbp "echo $pg > $g_debugfs/hwpoison/unpoison-pfn"
+}
+
+pfn_unpoison()
+{
+	local pg_list=
+	local pg=0
+	local pfn=0
+	local cur=
+	local i=0
+	local inj=_pfn_unpoison
+
+	pg_list=`$g_pagetool -NLrb hwpoison | grep -v offset | cut -f1`
+	for pg in $pg_list
+	do
+		$inj 0x$pg > /dev/null 2>&1
+	done
+}
+
 show_progress()
 {
 	local cur=
@@ -494,6 +521,13 @@ show_progress()
 	let "percent= ($g_duration - $rest) * 100 / $g_duration"
 
 	log "hwpoison page error injection: $percent% pages done"	
+	if [ $g_recycle -ne 0 ]; then
+		let "g_last=(($percent-$g_percent)*$g_duration)+$g_last"
+		[ $g_last -ge $g_recycle ] && {
+			g_last=0
+			pfn_unpoison
+		}
+	fi
 }
 
 _pfn_hwpoison()
@@ -789,6 +823,7 @@ usage()
 	echo -e "\t-A \t\t: use APEI to inject error"
 	echo -e "\t-F \t\t: execute as force mode, no interaction with user"
 	echo -e "\t-N \t\t: do not mkfs target block device"
+	echo -e "\t-R recyle\t: automatically unpoison pages after running recyle seconds"
 	echo -e "\t-S \t\t: test soft page offline"
 	echo -e "\t-V \t\t: verbose mode, show debug info"
 	echo
@@ -923,13 +958,16 @@ g_lowmem_e=	# end pfn of mem < 4G
 g_sysfs_mem="/sys/devices/system/memory"
 g_soft_offline=0
 
+# recyle poisoned page
+g_recycle=0
+g_last=0
+
 # madvise injector specific global variable
 g_vm_dirty_background_ratio=`cat /proc/sys/vm/dirty_background_ratio`
 g_vm_dirty_ratio=`cat /proc/sys/vm/dirty_ratio`
 g_vm_dirty_expire_centisecs=`cat /proc/sys/vm/dirty_expire_centisecs`
 
-
-while getopts ":c:d:f:l:n:t:o:i:r:p:s:hLMSAFNV" option
+while getopts ":c:d:f:l:n:t:o:i:r:p:s:hLMR:SAFNV" option
 do 
 	case $option in
 		c) g_tty=$OPTARG;;
@@ -946,6 +984,7 @@ do
 		r) g_result=$OPTARG;;
 		L) g_runltp=1;; 
 		M) g_madvise=1;;
+		R) g_recycle=$OPTARG;;
 		S) g_soft_offline=1;;
 		A) g_apei=1;;
 		F) g_force=1;;
