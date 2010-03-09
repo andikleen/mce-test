@@ -172,19 +172,12 @@ setup_errinj()
 		echo 70 > /proc/sys/vm/dirty_ratio
 		echo 1000000 > /proc/sys/vm/dirty_expire_centisecs
 		return
-	else
-		[ -f "$g_debugfs/hwpoison/corrupt-filter-enable" ] && echo 1 > $g_debugfs/hwpoison/corrupt-filter-enable
 	fi	
-	if [ $g_netfs -eq 0 ]; then
-		dev_major=0x`/usr/bin/stat --format=%t $g_dev` > /dev/null 2>&1
-		[ $? -ne 0 ] && rc=1	
-		dev_minor=0x`/usr/bin/stat --format=%T $g_dev` > /dev/null 2>&1
-		[ $? -ne 0 ] && rc=1	
-		[ $rc -eq 1 ] && err "invalid device: no inode # can be found"
-	else
-		dev_major=0
-		dev_minor=0
-	fi
+	dev_major=0x`/usr/bin/stat --format=%t $g_dev` > /dev/null 2>&1
+	[ $? -ne 0 ] && rc=1
+	dev_minor=0x`/usr/bin/stat --format=%T $g_dev` > /dev/null 2>&1
+	[ $? -ne 0 ] && rc=1
+	[ $rc -eq 1 ] && err "invalid device: no inode # can be found"
 	echo $dev_major > $g_debugfs/hwpoison/corrupt-filter-dev-major
 	echo $dev_minor > $g_debugfs/hwpoison/corrupt-filter-dev-minor
 	[ $g_pgtype = "all" -a -f "$g_debugfs/hwpoison/corrupt-filter-flags-mask" ] && echo 0 > $g_debugfs/hwpoison/corrupt-filter-flags-mask
@@ -194,23 +187,36 @@ setup_errinj()
 
 setup_fs()
 {
-	mkdir -p $g_testdir
+	local mkfs="mkfs.$g_fstype"
+	local mkfs_opts="-q"
+	local mount_opts
+
+	[ $g_fstype = reiserfs ] && mkfs="mkreiserfs"
+	[ $g_fstype = ocfs2 ] && mkfs_opts="$mkfs_opts -M local"
+	[ $g_fstype = cifs ] && mount_opts="-o password="""
+	mkdir -p $g_testdir || err "cannot mkdir $g_testdir"
 	if [ $g_nomkfs -eq 0 -a $g_netfs -eq 0 ]; then 
-		silent_exec which mkfs.$g_fstype || err "mkfs: unsupported fstype: $g_fstype"
-		if [ $g_force -eq 0 ]; then
+		silent_exec which $mkfs || err "mkfs: unsupported fstype: $g_fstype"
+		if [ $g_force -eq 0 -a $g_fstype != "ocfs2" ]; then
 			echo -n "test will format $g_dev to $g_fstype, continue [y/n]? "
 			read in
-			[ $in = 'y' -o $in = "yes" -o $in = 'Y' ] || err "mkfs.$g_fstype on $g_dev is cancelled"
+			[ $in = 'y' -o $in = "yes" -o $in = 'Y' ] || err "$mkfs on $g_dev is cancelled"
 		fi
-		begin "-- mkfs.$g_fstype $g_dev" 
-		if [ $g_fstype = "vfat" -o $g_fstype = "msdos" ]; then
-			silent_exec mkfs.$g_fstype $g_dev || err "cannot mkfs.$g_fstype on $g_dev"
-		else
-			silent_exec mkfs.$g_fstype -q $g_dev || err "cannot mkfs.$g_fstype on $g_dev"
+		begin "-- $mkfs $g_dev"
+		if [ $g_fstype = "vfat" -o $g_fstype = "msdos" -o $g_fstype = "btrfs" ]; then
+			mkfs_opts=""
+		elif [ $g_fstype = "xfs" ]; then
+			mkfs_opts="-f"
 		fi
-		end "-- mkfs.$g_fstype $g_dev" 
+		[ $g_fstype = ocfs2 ] && echo -n "test will format $g_dev to $g_fstype, continue [y/n]? "
+		silent_exec $mkfs $mkfs_opts $g_dev || err "cannot $mkfs $mkfs_opts on $g_dev"
+		end "-- $mkfs $g_dev"
 	fi
-	silent_exec mount -t $g_fstype $g_dev $g_testdir || err "cannot mount $g_fstype fs: $g_dev to $g_testdir"	
+	if [ $g_netfs -eq 0 ]; then
+		silent_exec mount -t $g_fstype $g_dev $g_testdir || err "cannot mount $g_fstype fs: $g_dev to $g_testdir"
+	else
+		silent_exec mount -t $g_fstype $mount_opts $g_netdev $g_testdir || err "cannot mount $g_fstype $mount_opts fs: $g_netdev to $g_testdir"
+	fi
 }
 
 check_env()
@@ -218,13 +224,17 @@ check_env()
 	check_debugfs
 	g_debugfs=`mount | grep debugfs | cut -d ' ' -f3`
 	[ -z "$g_tty" ] && invalid "$g_tty does not exist"
-	[ -z "$g_dev" ] && invalid "device is not specified"
 	if [ $g_fstype = "nfs" -o $g_fstype = "cifs" ]; then
 		g_netfs=1
-	else
-		[ -b $g_dev ] || invalid "invalid device: $g_dev"
+		[ -z $g_netdev ] && invalid "net device is not specified"
 	fi
-	df | grep $g_dev > /dev/null 2>&1 && err "device $g_dev has been mounted by others"
+	[ -z "$g_dev" ] && invalid "device is not specified"
+	[ -b $g_dev ] || invalid "invalid device: $g_dev"
+	if [ $g_netfs -eq 0 ]; then
+		df | grep $g_dev > /dev/null 2>&1 && err "device $g_dev has been mounted by others"
+	else
+		df | grep $g_netdev > /dev/null 2>&1 && err "device $g_netdev has been mounted by others"
+	fi
 	[ -d $g_bindir ] || invalid "no bin subdir there"
 	if [ $g_madvise -eq 0 ]; then
 		silent_exec which $g_pagetool || err "no $g_pagetool tool on the system"
@@ -637,16 +647,23 @@ fsck_pass()
 
 run_fsck()
 {
-	local dir=$g_logdir/fsck	
+	local dir=$g_logdir/fsck
 	local result=$dir/fsck.result
 	local log=$dir/fsck.log
+	local fsck=fsck.$g_fstype
+	local opts=""
 
 	mkdir -p $dir
 	echo -n "" > $log
 	echo -n "" > $result
 
-	begin "launch fsck.$g_fstype on $g_dev to check test result"
-	silent_exec which fsck.$g_fstype || {
+	[ $g_fstype = "btrfs" ] && fsck="btrfsck"
+	[ $g_fstype = "reiserfs" ] && {
+	        fsck="reiserfsck"
+	        opts="-y"
+	}
+	begin "launch $fsck on $g_dev to check test result"
+	silent_exec which $fsck || {
 		fsck_err "fsck: unsupported fstype: $g_fstype"
 		return
 	}
@@ -655,17 +672,17 @@ run_fsck()
 	df | grep $g_dev > /dev/null 2>&1
 	if [ $? -eq 0 ]; then
 		silent_exec umount $g_dev || {
-			fsck_err "cannot umount $g_dev to do fsck.$g_fstype" 
+			fsck_err "cannot umount $g_dev to do $fsck"
 			return
 		}
 	fi
-	fsck.$g_fstype $g_dev || fsck_err "err #$? while fsck.$g_fstype on $g_dev"
-	silent_exec mount -t $g_fstype $g_dev $g_testdir || { 
+	$fsck $opts $g_dev || fsck_err "err #$? while $fsck on $g_dev"
+	silent_exec mount -t $g_fstype $g_dev $g_testdir || {
 		fsck_err "cannot mount $g_testdir back after fsck_check"
 		return
 	}
-	fsck_pass "fsck.$g_fstype got pass on $g_dev"
-	end "launch fsck.$g_fstype on $g_dev to check test result"
+	fsck_pass "$fsck got pass on $g_dev"
+	end "launch $fsck on $g_dev to check test result"
 }
 
 fsck_result()
@@ -728,6 +745,7 @@ usage()
 	echo -e "\t-l logfile\t: log file"
 	echo -e "\t-t duration\t: test duration time (default is $g_duration seconds)"
 	echo -e "\t-i interval\t: sleep interval (default is $g_interval seconds)"
+	echo -e "\t-n netdev\t: target network disk to run test on"
 	echo -e "\t-o ltproot\t: ltp root directory (default is $g_ltproot/)"
 	echo -e "\t-p pagetype\t: page type to inject error "
 	echo -e "\t-s pagesize\t: page size on the system (default is $g_pgsize bytes)"
@@ -800,11 +818,15 @@ cleanup()
 	stop_children
 	fs_sync
 	result_check
-	df | grep $g_dev > /dev/null 2>&1 && silent_exec umount -f $g_dev
+	if [ $g_netfs -eq 0 ]; then
+		df | grep $g_dev > /dev/null 2>&1 && silent_exec umount -f $g_dev
+	else
+		df | grep $g_netdev > /dev/null 2>&1 && silent_exec umount -f $g_netdev
+	fi
 	if [ $g_madvise -eq 1 ]; then
-		echo $g_vm_dirty_background_ratio > /proc/sys/vm/dirty_background_ratio
-		echo $g_vm_dirty_ratio > /proc/sys/vm/dirty_ratio
-		echo $g_vm_dirty_expire_centisecs > /proc/sys/vm/dirty_expire_centisecs
+	        echo $g_vm_dirty_background_ratio > /proc/sys/vm/dirty_background_ratio
+	        echo $g_vm_dirty_ratio > /proc/sys/vm/dirty_ratio
+	        echo $g_vm_dirty_expire_centisecs > /proc/sys/vm/dirty_expire_centisecs
 	fi
 	end "preparing to complete testing"
 	log "!!! Linux HWPOISON stress testing DONE !!!"
@@ -828,6 +850,7 @@ select_injector()
 
 g_dev=
 g_debugfs=
+g_netdev=
 g_testdir="./hwpoison"
 g_fstype=ext3
 g_netfs=0
@@ -869,7 +892,8 @@ g_vm_dirty_background_ratio=`cat /proc/sys/vm/dirty_background_ratio`
 g_vm_dirty_ratio=`cat /proc/sys/vm/dirty_ratio`
 g_vm_dirty_expire_centisecs=`cat /proc/sys/vm/dirty_expire_centisecs`
 
-while getopts ":c:d:f:l:t:o:i:r:p:s:hLMAFNV" option
+
+while getopts ":c:d:f:l:n:t:o:i:r:p:s:hLMAFNV" option
 do 
 	case $option in
 		c) g_tty=$OPTARG;;
@@ -878,6 +902,7 @@ do
 		l) g_logfile=$OPTARG;;
 		t) g_duration=$OPTARG;;
 		i) g_interval=$OPTARG;;
+		n) g_netdev=$OPTARG;;
 		o) g_ltproot=$OPTARG
 		   g_ltppan="$g_ltproot/ltp-pan";;
 		p) g_pgtype=$OPTARG;;
