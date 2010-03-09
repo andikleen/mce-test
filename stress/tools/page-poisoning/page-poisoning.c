@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <getopt.h>
+#include <limits.h>
 
 #include <sys/mman.h>
 #include <sys/fcntl.h>
@@ -43,10 +44,9 @@
 #define MADV_POISON 100
 
 #define PAGE_SIZE 4 * 1024
-#define SHM_SIZE 1		// in page.
+#define SHM_SIZE 1		// in page_size.
 #define SHM_MODE 0600
 #define FILE_SIZE 1 * 1024 * 1024 * 1024
-#define FILE_PATH 100
 #define LOG_BUFLEN 100
 
 #define INSTANCE_NUM 10000
@@ -55,8 +55,8 @@
 #define TEST_FAIL 0
 
 static int PS = PAGE_SIZE;
-static int instance = 0;	// idex of the child process.
-static int testid = 0;		// test idex of the child process.
+static int instance = 0;	// index of the child process.
+static int testid = 0;		// test index of the child process.
 static int test_types = 0;	// totoal test types.
 static int t_shm = -1;		// index of shm test case.
 static int failure = 0;		// result of child process.
@@ -82,11 +82,11 @@ static pid_t g_pid[INSTANCE_NUM] = { 0 };
 static int shm_size = SHM_SIZE;
 static int child_num = INSTANCE_NUM;
 static int shm_child_num = 0;
-static char log_file[FILE_PATH];
+static char log_file[PATH_MAX];
 static FILE *log_fd = NULL;
-static char result_file[FILE_PATH];
+static char result_file[PATH_MAX];
 static FILE *result_fd = NULL;
-static char tmp_dir[FILE_PATH] = { '\0' };
+static char tmp_dir[PATH_MAX] = { '\0' };
 static int clean_env = 0;
 
 static int semid_ready = 0;
@@ -214,9 +214,8 @@ static void sighandler(int sig, siginfo_t * si, void *arg)
 {
 	mylog("signal %d code %d addr %p\n", sig, si->si_code, si->si_addr);
 	if (si->si_addr != expected_addr) {
-		result
-		    ("failed: Unexpected address in signal %p (expected %p)\n",
-		     si->si_addr, expected_addr);
+		result("failed: Unexpected address in signal %p (expected %p)\n",
+		       si->si_addr, expected_addr);
 		failure++;
 	}
 
@@ -289,7 +288,7 @@ static void recover(char *msg, char *page, enum rmode mode)
 			return;
 		}
 		/* signal or kill should have happened */
-		result("failed: %s: page not poisoned after injection\n", msg);
+		result("failed: %s: page is not poisoned after injection\n", msg);
 		failure++;
 		return;
 	}
@@ -335,7 +334,7 @@ static int playfile(char *buf)
 {
 	int fd;
 	if (buf[0] == 0)
-		snprintf(buf, FILE_PATH, "%s/poison%d", tmp_dir, mypid);
+		snprintf(buf, PATH_MAX, "%s/dirty%d", tmp_dir, mypid);
 	fd = open(buf, O_CREAT | O_RDWR | O_TRUNC, 0600);
 	if (fd < 0)
 		err("opening temporary file: %s", buf);
@@ -348,6 +347,7 @@ static int playfile(char *buf)
 	write(fd, tmp, PS * NPAGES);
 
 	lseek(fd, 0, SEEK_SET);
+	free(tmp);
 	return fd;
 }
 
@@ -403,9 +403,9 @@ static void mlocked_anonymous(void)
 static void do_file_clean(int flags, char *name)
 {
 	char *page;
-	char fn[FILE_PATH];
+	char fn[PATH_MAX];
 	snprintf(fn, PATH_MAX, "%s/clean%d", tmp_dir, mypid);
-	int fd = open(fn, O_RDWR | O_TRUNC | O_CREAT);
+	int fd = open(fn, O_RDWR | O_TRUNC | O_CREAT, 0600);
 	if (fd < 0)
 		err("opening temporary file: %s", fn);
 	write(fd, fn, 4);
@@ -455,7 +455,7 @@ static void do_file_dirty(int flags, char *name)
 {
 	char nbuf[100];
 	char *page;
-	char fn[FILE_PATH];
+	char fn[PATH_MAX];
 	fn[0] = 0;
 	int fd = playfile(fn);
 
@@ -486,8 +486,7 @@ static void do_file_dirty(int flags, char *name)
 	fd = open(fn, O_RDWR);
 	char buf[128];
 	/* the earlier close has eaten the error */
-	optionalerr("explicit read after poison",
-		    read(fd, buf, sizeof buf) < 0);
+	optionalerr("explicit read after poison", read(fd, buf, sizeof buf) < 0);
 	optionalerr("explicit write after poison", write(fd, "foobar", 6) < 0);
 	optionalerr("fsync expect error", fsync(fd) < 0);
 	close(fd);
@@ -628,6 +627,7 @@ static void shm_test(void)
 
 	if (!failure)
 		ipc->test[instance].result = TEST_PASS;
+	shmdt(shmptr);
 	shmdt(ipc);
 }
 
@@ -644,6 +644,8 @@ static void setup_ipc(void)
 	if ((ipc = shmat(ipc_entry, 0, 0)) == (void *)-1)
 		err("shmat error\n");
 	memset(ipc, 0, sizeof(struct ipc));
+	ipc->shm.id = -1;
+	shmdt(ipc);
 
 	semid_ready = semget(IPC_PRIVATE, 2, SHM_R | SHM_W);
 	sunion.val = 1;
@@ -663,7 +665,14 @@ static void setup_ipc(void)
 
 static void free_ipc(void)
 {
+	struct ipc *ipc;
+
 	semctl(semid_ready, 0, IPC_RMID);
+	if ((ipc = shmat(ipc_entry, 0, 0)) == (void *)-1)
+		err("shmat error\n");
+	if (ipc->shm.id != -1)
+		shmctl(ipc->shm.id, IPC_RMID, 0);
+	shmdt(ipc);
 	shmctl(ipc_entry, IPC_RMID, 0);
 }
 
@@ -739,14 +748,14 @@ static int run_test(int children)
 				failure++;
 			}
 		}
+		shmdt(ipc);
 	}
 
 	if (!failure)
-		result("\t!!! MADVISE Test got PASS. !!!\n\n");
+		result("\t!!! Page Poisoning Test got PASS. !!!\n\n");
 	else {
-		result
-		    ("\t!!! MADVISE Test is FAILED (%d failures found). !!!\n\n",
-		     failure);
+		result("\t!!! Page Poisoning Test is FAILED (%d failures found). !!!\n\n",
+		         failure);
 		rc = 1;
 	}
 
