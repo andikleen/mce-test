@@ -165,6 +165,10 @@ setup_errinj()
 	local dev_minor=
 	local rc=0
 
+	if [ $g_soft_offline -eq 1 ]; then
+	        [ -f "$g_debugfs/hwpoison/corrupt-filter-enable" ] && echo 0 > $g_debugfs/hwpoison/corrupt-filter-enable
+	        return
+	fi
 	if [ $g_madvise -eq 1 ]; then
 		[ -f "$g_debugfs/hwpoison/corrupt-filter-enable" ] && echo 0 > $g_debugfs/hwpoison/corrupt-filter-enable
 		# to avoid unexpected page-state changing in background while testing.
@@ -242,11 +246,15 @@ check_env()
 		dbp "Found the tool: $g_pagetool"
 	fi	
 	if [ $g_pfninj -eq 1 ]; then
-		#if hwpoison_inject is a module, it is ensured to have been loaded
-		modinfo hwpoison_inject > /dev/null 2>&1
-		if [ $? -eq 0 ]; then
-			[ -d $g_debugfs/hwpoison/ ] || modprobe hwpoison_inject
-			[ $? -eq 0 ] || die "module hwpoison_inject isn't supported ?"
+		if [ $g_soft_offline -eq 1 ]; then
+		        [ -f $g_sysfs_mem/soft_offline_page ] || invalid "pls. ensure soft_offline_page is enabled"
+		else
+			#if hwpoison_inject is a module, it is ensured to have been loaded
+			modinfo hwpoison_inject > /dev/null 2>&1
+			if [ $? -eq 0 ]; then
+			        [ -d $g_debugfs/hwpoison/ ] || modprobe hwpoison_inject
+			        [ $? -eq 0 ] || die "module hwpoison_inject isn't supported ?"
+			fi
 		fi
 	fi
 	if [ $g_apei -eq 1 ]; then
@@ -488,12 +496,26 @@ show_progress()
 	log "hwpoison page error injection: $percent% pages done"	
 }
 
-_pfn_inj()
+_pfn_hwpoison()
 {
-	local pg=$1
+	local pfn=$1
 
-	echo $pg > $g_debugfs/hwpoison/corrupt-pfn
-	dbp "echo $pg > $g_debugfs/hwpoison/corrupt-pfn"
+	echo $pfn > $g_debugfs/hwpoison/corrupt-pfn
+	dbp "echo $pfn > $g_debugfs/hwpoison/corrupt-pfn"
+}
+
+_pfn_soft_offline()
+{
+	local pfn=$1
+	local i
+	local j
+	local paddr
+
+	i=`printf "%i" $pfn`
+	let "j=$i * $g_pgsize"
+	paddr=`printf "0x%x" $j`
+	echo $paddr > $g_sysfs_mem/soft_offline_page
+	dbp "echo $paddr > $g_sysfs_mem/soft_offline_page"
 }
 
 pfn_inj()
@@ -503,13 +525,15 @@ pfn_inj()
 	local pfn=0
 	local cur=
 	local i=0
+	local inj=_pfn_hwpoison
 
+	[ $g_soft_offline -eq 1 ] && inj=_pfn_soft_offline
 	if [ $g_pgtype = "all" ]; then
 		pfn=$g_lowmem_s 	# start from 1M.
 		while [ "$pfn" -lt "$g_maxpfn" ]
 		do
 			pg=`printf "%x" $pfn`
-			_pfn_inj 0x$pg > /dev/null 2>&1
+			$inj 0x$pg > /dev/null 2>&1
 			pfn=`expr $pfn + 1`
 			[ $pfn -gt $g_lowmem_e ] && pfn=$g_highmem_s
 			[ $pfn -gt $g_highmem_e ] && break
@@ -526,7 +550,7 @@ pfn_inj()
 		pg_list=`$g_pagetool -NLrb $g_pgtype | grep -v offset | cut -f1`
 		for pg in $pg_list
 		do
-			_pfn_inj 0x$pg > /dev/null 2>&1
+			$inj 0x$pg > /dev/null 2>&1
 			i=`expr $i + 1`
 			if [ $i -eq $g_progress ]; then
 				cur=`date +%s`
@@ -585,20 +609,29 @@ err_inject()
 {
 	local cur=
 	local i=0
+	local msg="hwpoison page error injection"
+	local MSG="inject HWPOISON error to pages"
 
-	if [ $g_madvise -eq 1 ]; then
-		begin "inject HWPOISON error to pages thru madvise syscall"
-	else
-		begin "inject HWPOISON error to pages ($g_pgtype)"
+	if [ $g_soft_offline -eq 1 ]; then
+	        msg="page soft offline"
+	        MSG="soft OFFLINE pages"
 	fi
-	let "g_progress=$g_duration * 100"
+	if [ $g_madvise -eq 1 ]; then
+		begin "$MSG thru madvise syscall"
+	else
+		begin "$MSG ($g_pgtype)"
+	fi
+	let "g_progress=$g_duration * 10"
 	g_time_s=`date +%s`	
 	g_time_e=`expr $g_time_s + $g_duration`
 	cur=$g_time_s
-	[ $g_madvise -eq 1 ] && { 
+	if [ $g_madvise -eq 1 ]; then
 		page_poisoning	
+		log "$msg: 0% pages done"
 		show_progress
-	}
+	else
+	        log "$msg: 0% pages done"
+	fi
 	while [ "$cur" -lt "$g_time_e" ]
 	do
 		if [ $g_madvise -eq 0 ]; then 
@@ -614,14 +647,14 @@ err_inject()
 		fi	
 		cur=`date +%s` 
 	done
-	log "hwpoison page error injection: 100% pages done"	
+	log "$msg: 100% pages done"
 	# wait workloads to be finished.	
 	sleep $g_interval 
 
 	if [ $g_madvise -eq 1 ]; then
-		end "inject HWPOISON error to pages thru madvise syscall"
+		end "$MSG thru madvise syscall"
 	else
-		end "inject HWPOISON error to pages ($g_pgtype)"
+		end "$MSG ($g_pgtype)"
 	fi
 }
 
@@ -756,6 +789,7 @@ usage()
 	echo -e "\t-A \t\t: use APEI to inject error"
 	echo -e "\t-F \t\t: execute as force mode, no interaction with user"
 	echo -e "\t-N \t\t: do not mkfs target block device"
+	echo -e "\t-S \t\t: test soft page offline"
 	echo -e "\t-V \t\t: verbose mode, show debug info"
 	echo
 	echo -e "device:" 
@@ -886,6 +920,8 @@ g_highmem_s=	# start pfn of highmem
 g_highmem_e=	# end pfn of highmem
 g_lowmem_s=	# start pfn of mem < 4G
 g_lowmem_e=	# end pfn of mem < 4G
+g_sysfs_mem="/sys/devices/system/memory"
+g_soft_offline=0
 
 # madvise injector specific global variable
 g_vm_dirty_background_ratio=`cat /proc/sys/vm/dirty_background_ratio`
@@ -893,7 +929,7 @@ g_vm_dirty_ratio=`cat /proc/sys/vm/dirty_ratio`
 g_vm_dirty_expire_centisecs=`cat /proc/sys/vm/dirty_expire_centisecs`
 
 
-while getopts ":c:d:f:l:n:t:o:i:r:p:s:hLMAFNV" option
+while getopts ":c:d:f:l:n:t:o:i:r:p:s:hLMSAFNV" option
 do 
 	case $option in
 		c) g_tty=$OPTARG;;
@@ -910,6 +946,7 @@ do
 		r) g_result=$OPTARG;;
 		L) g_runltp=1;; 
 		M) g_madvise=1;;
+		S) g_soft_offline=1;;
 		A) g_apei=1;;
 		F) g_force=1;;
 		N) g_nomkfs=1;;
