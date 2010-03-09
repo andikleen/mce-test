@@ -514,13 +514,16 @@ show_progress()
 	local cur=
 	local rest=0
 	local percent=0
-	
+	local next=0
+	local msg="hwpoison page error injection"
+
+	[ $g_soft_offline -eq 1 ] && msg="page soft offline"
+
 	cur=`date +%s` 
 	[ "$cur" -ge "$g_time_e" ] && return
 	rest=`expr $g_time_e - $cur`
 	let "percent= ($g_duration - $rest) * 100 / $g_duration"
-
-	log "hwpoison page error injection: $percent% pages done"	
+	[ $percent -eq 0 ] && return
 	if [ $g_recycle -ne 0 ]; then
 		let "g_last=(($percent-$g_percent)*$g_duration)+$g_last"
 		[ $g_last -ge $g_recycle ] && {
@@ -528,6 +531,10 @@ show_progress()
 			pfn_unpoison
 		}
 	fi
+	[ $percent -gt 10 ] && let "next= $percent - 10"
+	[ $g_percent -ne 0 -a $g_percent -gt $next ] && return
+	g_percent=$percent
+	log "$msg: $g_percent% pages done"
 }
 
 _pfn_hwpoison()
@@ -948,6 +955,7 @@ g_pid_madv=
 g_pid_fsmeta=
 g_pid_ltp=
 g_progress=
+g_percent=0
 g_pgtype="lru,referenced,readahead,swapcache,swapbacked,anonymous"
 g_pgsize=4096	# page size on the system
 g_maxpfn=	# maxpfn on the system
