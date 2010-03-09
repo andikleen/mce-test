@@ -106,6 +106,11 @@ err()
 	exit 1
 }
 
+die()
+{
+	err $@
+}
+
 invalid()
 {
 	_print -en "\\033[0;31m" # set font color as red
@@ -181,7 +186,7 @@ setup_errinj()
 	[ $? -ne 0 ] && rc=1
 	dev_minor=0x`/usr/bin/stat --format=%T $g_dev` > /dev/null 2>&1
 	[ $? -ne 0 ] && rc=1
-	[ $rc -eq 1 ] && err "invalid device: no inode # can be found"
+	[ $rc -eq 1 ] && invalid "invalid device: no inode # can be found"
 	echo $dev_major > $g_debugfs/hwpoison/corrupt-filter-dev-major
 	echo $dev_minor > $g_debugfs/hwpoison/corrupt-filter-dev-minor
 	[ $g_pgtype = "all" -a -f "$g_debugfs/hwpoison/corrupt-filter-flags-mask" ] && echo 0 > $g_debugfs/hwpoison/corrupt-filter-flags-mask
@@ -235,16 +240,16 @@ check_env()
 	[ -z "$g_dev" ] && invalid "device is not specified"
 	[ -b $g_dev ] || invalid "invalid device: $g_dev"
 	if [ $g_netfs -eq 0 ]; then
-		df | grep $g_dev > /dev/null 2>&1 && err "device $g_dev has been mounted by others"
+		df | grep $g_dev > /dev/null 2>&1 && invalid "device $g_dev has been mounted by others"
 	else
-		df | grep $g_netdev > /dev/null 2>&1 && err "device $g_netdev has been mounted by others"
+		df | grep $g_netdev > /dev/null 2>&1 && invalid "device $g_netdev has been mounted by others"
 	fi
 	[ -d $g_bindir ] || invalid "no bin subdir there"
 	if [ $g_madvise -eq 0 -o $g_recycle -ne 0 ]; then
-		silent_exec which $g_pagetool || err "no $g_pagetool tool on the system"
+		silent_exec which $g_pagetool || invalid "no $g_pagetool tool on the system"
 		g_pagetool=`which $g_pagetool`
 		dbp "Found the tool: $g_pagetool"
-	fi	
+	fi
 	if [ $g_pfninj -eq 1 ]; then
 		if [ $g_soft_offline -eq 1 ]; then
 		        [ -f $g_sysfs_mem/soft_offline_page ] || invalid "pls. ensure soft_offline_page is enabled"
@@ -253,7 +258,7 @@ check_env()
 			modinfo hwpoison_inject > /dev/null 2>&1
 			if [ $? -eq 0 ]; then
 			        [ -d $g_debugfs/hwpoison/ ] || modprobe hwpoison_inject
-			        [ $? -eq 0 ] || die "module hwpoison_inject isn't supported ?"
+			        [ $? -eq 0 ] || invalid "module hwpoison_inject isn't supported ?"
 			fi
 		fi
 	fi
@@ -265,11 +270,11 @@ check_env()
 		modinfo einj > /dev/null 2>&1
 		if [ $? -eq 0 ]; then
 			[ -d $g_debugfs/apei/einj ] || modprobe einj
-			[  $? -eq 0 ] || die "module apei_inj isn't supported ?"
+			[ $? -eq 0 ] || invalid "module apei_inj isn't supported ?"
 		fi
 	fi
 	[ -d $g_ltproot -a -f $g_ltppan ] || invalid "no ltp-pan on the machine: $g_ltppan"
-	if [ $g_runltp -eq 1 ]; then 
+	if [ $g_runltp -eq 1 ]; then
 		[ -d $g_ltproot -a -f $g_ltproot/runltp ] || invalid "no runltp on the machine"
 	fi
 	[ $g_duration -eq 0 ] && invalid "test duration is set as 0 second"
@@ -939,6 +944,7 @@ let "g_duration=120"
 g_interval=5
 g_runltp=0
 g_ltproot="/ltp"
+g_ltppan="$g_ltproot/pan/ltp-pan"
 g_pagetool="page-types"
 g_madvise=0
 g_apei=0
@@ -992,7 +998,7 @@ do
 		i) g_interval=$OPTARG;;
 		n) g_netdev=$OPTARG;;
 		o) g_ltproot=$OPTARG
-		   g_ltppan="$g_ltproot/ltp-pan";;
+		   g_ltppan="$g_ltproot/pan/ltp-pan";;
 		p) g_pgtype=$OPTARG;;
 		s) g_pgsize=$OPTARG;;
 		r) g_result=$OPTARG;;
