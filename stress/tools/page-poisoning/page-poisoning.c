@@ -404,7 +404,7 @@ static void do_file_clean(int flags, char *name)
 {
 	char *page;
 	char fn[FILE_PATH];
-	snprintf(fn, 30, "%s/test%d", tmp_dir, mypid);
+	snprintf(fn, PATH_MAX, "%s/clean%d", tmp_dir, mypid);
 	int fd = open(fn, O_RDWR | O_TRUNC | O_CREAT);
 	if (fd < 0)
 		err("opening temporary file: %s", fn);
