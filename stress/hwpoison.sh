@@ -280,9 +280,10 @@ setup_log()
 	mkdir -p $g_resultdir
 	rm -rf $g_logdir
 	mkdir -p $g_logdir
-	echo -n "" > $g_logfile
-	echo -n "" > $g_result
+	echo "# hwpoison.sh $g_parameter" > $g_logfile
+	echo "# hwpoison.sh $g_parameter" > $g_result
 	clear > $g_tty
+	echo "# hwpoison.sh $g_parameter" > $g_tty
 }
 
 setup_env() 
@@ -362,7 +363,9 @@ fs_metadata()
 	echo -n "" > $pan_log
 	echo -n "" > $pan_output
 	echo -n "" > $pan_zoo
-	mkdir -p $tmp
+	log "setup fs_metadata test environment"
+	silent_exec_background rm -rf $tmp
+	mkdir -p $tmp || err "cannot create dir: $tmp"
 
 	echo "fs_metadata fs-metadata.sh $tree_depth $node_number $threads $g_duration $result $tmp $log" > $g_casedir/fs_metadata 
 	dbp "g_ltppan -n fs_metadata -a $pan_zoo -f $g_casedir/fs_metadata -o $pan_output -l $pan_log -C $pan_failed &"
@@ -436,7 +439,7 @@ page_poisoning()
 	echo -n "" > $pan_zoo
 	echo -n "" > $log
 	echo -n "" > $result
-	mkdir -p $tmp
+	mkdir -p $tmp || err "cannot create dir: $tmp"
 
 	echo "page_poisoning page-poisoning -l $log -r $result -t $tmp" > $g_casedir/page_poisoning
 	dbp "$g_ltppan -n page_poisoning -a $pan_zoo -f $g_casedir/page_poisoning -t ${g_duration}s -o $pan_output -l $pan_log -C $pan_failed &"
@@ -803,7 +806,7 @@ result_check()
 	fi
 	[ $g_netfs -eq 0 ] && fsck_result
 	result ""
-	result "totally $g_failed tasks failed"
+	result "totally $g_failed task-groups report failures"
 	result "#############################################"
 	end "-- collecting test result"
 }
@@ -816,23 +819,23 @@ usage()
 	echo -e "\t-c console\t: target tty console to print test log" 
 	echo -e "\t-d device\t: target block device to run test on" 
 	echo -e "\t-f fstype\t: filesystem type to be tested"
-	echo -e "\t-l logfile\t: log file"
-	echo -e "\t-t duration\t: test duration time (default is $g_duration seconds)"
 	echo -e "\t-i interval\t: sleep interval (default is $g_interval seconds)"
+	echo -e "\t-l logfile\t: log file"
 	echo -e "\t-n netdev\t: target network disk to run test on"
 	echo -e "\t-o ltproot\t: ltp root directory (default is $g_ltproot/)"
 	echo -e "\t-p pagetype\t: page type to inject error "
-	echo -e "\t-s pagesize\t: page size on the system (default is $g_pgsize bytes)"
 	echo -e "\t-r result\t: result file"
-	echo -e "\t-h \t\t: print this page"
-	echo -e "\t-L \t\t: run ltp in background"
-	echo -e "\t-M \t\t: run page_poisoning test thru madvise syscall"
+	echo -e "\t-s pagesize\t: page size on the system (default is $g_pgsize bytes)"
+	echo -e "\t-t duration\t: test duration time (default is $g_duration seconds)"
 	echo -e "\t-A \t\t: use APEI to inject error"
 	echo -e "\t-F \t\t: execute as force mode, no interaction with user"
+	echo -e "\t-L \t\t: run ltp in background"
+	echo -e "\t-M \t\t: run page_poisoning test thru madvise syscall"
 	echo -e "\t-N \t\t: do not mkfs target block device"
 	echo -e "\t-R recyle\t: automatically unpoison pages after running recyle seconds"
 	echo -e "\t-S \t\t: test soft page offline"
 	echo -e "\t-V \t\t: verbose mode, show debug info"
+	echo -e "\t-h \t\t: print this page"
 	echo
 	echo -e "device:" 
 	echo -e "\tthis is a mandatory argument. typically, it's a disk partition." 
@@ -975,7 +978,10 @@ g_vm_dirty_background_ratio=`cat /proc/sys/vm/dirty_background_ratio`
 g_vm_dirty_ratio=`cat /proc/sys/vm/dirty_ratio`
 g_vm_dirty_expire_centisecs=`cat /proc/sys/vm/dirty_expire_centisecs`
 
-while getopts ":c:d:f:l:n:t:o:i:r:p:s:hLMR:SAFNV" option
+# test parameters
+g_parameter=$@
+
+while getopts ":c:d:f:hi:l:n:o:p:r:s:t:LMR:SAFNV" option
 do 
 	case $option in
 		c) g_tty=$OPTARG;;
