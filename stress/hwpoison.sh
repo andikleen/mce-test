@@ -167,6 +167,10 @@ setup_errinj()
 
 	if [ $g_madvise -eq 1 ]; then
 		[ -f "$g_debugfs/hwpoison/corrupt-filter-enable" ] && echo 0 > $g_debugfs/hwpoison/corrupt-filter-enable
+		# to avoid unexpected page-state changing in background while testing.
+		echo 70 > /proc/sys/vm/dirty_background_ratio
+		echo 70 > /proc/sys/vm/dirty_ratio
+		echo 1000000 > /proc/sys/vm/dirty_expire_centisecs
 		return
 	else
 		[ -f "$g_debugfs/hwpoison/corrupt-filter-enable" ] && echo 1 > $g_debugfs/hwpoison/corrupt-filter-enable
@@ -797,6 +801,11 @@ cleanup()
 	fs_sync
 	result_check
 	df | grep $g_dev > /dev/null 2>&1 && silent_exec umount -f $g_dev
+	if [ $g_madvise -eq 1 ]; then
+		echo $g_vm_dirty_background_ratio > /proc/sys/vm/dirty_background_ratio
+		echo $g_vm_dirty_ratio > /proc/sys/vm/dirty_ratio
+		echo $g_vm_dirty_expire_centisecs > /proc/sys/vm/dirty_expire_centisecs
+	fi
 	end "preparing to complete testing"
 	log "!!! Linux HWPOISON stress testing DONE !!!"
 	log "result: $g_result"
@@ -854,6 +863,11 @@ g_highmem_s=	# start pfn of highmem
 g_highmem_e=	# end pfn of highmem
 g_lowmem_s=	# start pfn of mem < 4G
 g_lowmem_e=	# end pfn of mem < 4G
+
+# madvise injector specific global variable
+g_vm_dirty_background_ratio=`cat /proc/sys/vm/dirty_background_ratio`
+g_vm_dirty_ratio=`cat /proc/sys/vm/dirty_ratio`
+g_vm_dirty_expire_centisecs=`cat /proc/sys/vm/dirty_expire_centisecs`
 
 while getopts ":c:d:f:l:t:o:i:r:p:s:hLMAFNV" option
 do 
