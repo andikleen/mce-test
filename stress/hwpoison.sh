@@ -960,7 +960,8 @@ select_injector()
 	fi
 }
 
-g_children=	# process num of workloads.
+g_children=0	# child process num for each workload.
+		# 0 means using default child process num of each workload.
 g_dev=
 g_debugfs=
 g_netdev=
