@@ -652,6 +652,7 @@ static void do_shared(int shared_mode)
 		if (shared_mode == IPV_SHARED && shmdt(shared_page) == -1)
 			err("shmdt");
 
+		fflush(stdout);
 		_exit(failure);
 	}
 
