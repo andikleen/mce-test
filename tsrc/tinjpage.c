@@ -536,9 +536,9 @@ enum shared_mode {
  */
 static void do_shared(int shared_mode)
 {
-	int shm_id, sem_id, semaphore;
+	int shm_id = -1, sem_id = -1, semaphore;
 	pid_t pid;
-	char *shared_page;
+	char *shared_page = NULL;
 	struct sembuf sembuffer;
 
 	if (shared_mode == MMAP_SHARED) {
@@ -555,23 +555,33 @@ static void do_shared(int shared_mode)
 
 	if (early_kill) {
 		sem_id = semget(IPC_PRIVATE, 1, 0666|IPC_CREAT);
-		if (sem_id == -1)
-			err("semget");
+		if (sem_id == -1) {
+			perror("semget");
+			goto cleanup;
+		}
 		semaphore = semctl(sem_id, 0, SETVAL, 1);
-		if (semaphore == -1)
-			err("semctl");
-		if (get_semaphore(sem_id, &sembuffer))
-			err("get_semaphore");
+		if (semaphore == -1) {
+			perror("semctl");
+			goto cleanup;
+		}
+		if (get_semaphore(sem_id, &sembuffer)) {
+			perror("get_semaphore");
+			goto cleanup;
+		}
 	}
 
 	pid = fork();
-	if (pid < 0)
-		err("fork");
+	if (pid < 0) {
+		perror("fork");
+		goto cleanup;
+	}
 
 	if (shared_mode == IPV_SHARED) {
 		shared_page = shmat(shm_id, NULL, 0);
-		if (shared_page == (char *)-1)
-			err("shmat");
+		if (shared_page == (char *)-1) {
+			perror("shmat");
+			goto cleanup;
+		}
 	}
 
 	memset(shared_page, 'a', 3);
@@ -595,7 +605,7 @@ static void do_shared(int shared_mode)
 			sleep(10);
 			printf("XXX timeout: child process does not send signal\n");
 			failure++;
-			return;
+			goto cleanup;
 		}
 		waitid(P_PID, pid, &sig, WEXITED);
 
@@ -625,8 +635,10 @@ static void do_shared(int shared_mode)
 			recover("ipv shared page (parent)",
 				shared_page, MWRITE);
 
-		if (shared_mode == IPV_SHARED && shmdt(shared_page) == -1)
-			err("shmdt");
+		if (shared_mode == IPV_SHARED && shmdt(shared_page) == -1) {
+			perror("shmdt");
+			goto cleanup;
+		}
 	}
 
 	if (!pid) {
@@ -641,12 +653,19 @@ static void do_shared(int shared_mode)
 		_exit(failure);
 	}
 
+cleanup:
+	if (shared_page && shared_mode == IPV_SHARED)
+		shmdt(shared_page);
+	if (shm_id >= 0 && shmctl(shm_id, IPC_RMID, NULL) < 0) 
+		perror("shmctl IPC_RMID");
+	if (sem_id >= 0 && semctl(sem_id, 0, IPC_RMID) < 0)
+		perror("semctl IPC_RMID");
 	return;
 
 child_error:
 	printf("XXX child process was terminated unexpectedly\n");
 	failure++;
-	return;
+	goto cleanup;
 }
 
 static void mmap_shared(void)
