@@ -69,8 +69,10 @@ void *checked_mmap(void *start, size_t length, int prot, int flags,
 
 void munmap_reserve(void *page, int size)
 {
-	munmap(page, size);
-	mmap(page, size, PROT_NONE, MAP_PRIVATE|MAP_FIXED, 0, 0);
+	if (munmap(page, size) < 0)
+		err("munmap");
+	if (mmap(page, size, PROT_NONE, MAP_PRIVATE|MAP_FIXED, 0, 0) < 0)
+		err("mmap2");
 }
 
 void *xmalloc(size_t s)
@@ -657,12 +659,16 @@ static void do_shared(int shared_mode)
 	}
 
 cleanup:
-	if (shared_page && shared_mode == IPV_SHARED)
-		shmdt(shared_page);
+	if (shared_page) {
+		if (shared_mode == IPV_SHARED)
+			shmdt(shared_page);
+		else
+			munmap_reserve(shared_page, PS);
+	}
 	if (shm_id >= 0 && shmctl(shm_id, IPC_RMID, NULL) < 0) 
-		perror("shmctl IPC_RMID");
+		err("shmctl IPC_RMID");
 	if (sem_id >= 0 && semctl(sem_id, 0, IPC_RMID) < 0)
-		perror("semctl IPC_RMID");
+		err("semctl IPC_RMID");
 	return;
 
 child_error:
