@@ -642,6 +642,8 @@ static void do_shared(int shared_mode)
 	}
 
 	if (!pid) {
+		failure = 0;
+
 		if (early_kill)
 			if (get_semaphore(sem_id, &sembuffer))
 				err("get_semaphore");
