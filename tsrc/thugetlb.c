@@ -44,6 +44,9 @@ char filepath[BUF_SIZE];
 
 #define DEB printf("DEBUG [%d:%s:%d]\n", getpid(), __FILE__, __LINE__);
 
+#define err(x) perror(x), exit(1)
+#define errmsg(x) fprintf(stderr, x "\n"), exit(1)
+
 static void usage(void)
 {
 	printf(
@@ -213,10 +216,10 @@ int main(int argc, char *argv[])
 	}
 
 	if (inject && corrupt_page * PS > file_size * HPAGE_SIZE)
-		err("Target page is out of range.\n");
+		errmsg("Target page is out of range.\n");
 
 	if (avoid_touch && corrupt_page == -1)
-		err("Avoid which page?\n");
+		errmsg("Avoid which page?\n");
 
 	/* Construct file name */
 	if (access(argv[argc - 1], F_OK) == -1) {
