@@ -46,7 +46,7 @@ char filepath[BUF_SIZE];
 #define DEB printf("DEBUG [%d:%s:%d]\n", getpid(), __FILE__, __LINE__);
 
 #define err(x) perror(x), exit(1)
-#define errmsg(x) fprintf(stderr, x "\n"), exit(1)
+#define errmsg(x) fprintf(stderr, x), exit(1)
 
 static void usage(void)
 {
