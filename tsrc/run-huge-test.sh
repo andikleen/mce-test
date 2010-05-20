@@ -6,7 +6,7 @@
 
 usage()
 {
-    echo "Usage: ./run-hgue-test.sh hugetlbfs_directory" && exit 1
+    echo "Usage: ./run-huge-test.sh hugetlbfs_directory" && exit 1
 }
 
 htdir=$1
