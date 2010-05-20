@@ -14,7 +14,7 @@ clean:
 
 distclean: clean
 
-test: stress-soft stress-hard
+test: all stress-soft stress-hard
 
 stress-soft:
 	@echo "run soft stress tester for 60 seconds"
