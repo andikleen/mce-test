@@ -15,6 +15,7 @@
 #include <sys/sem.h>
 #include <sys/types.h>
 #include <sys/prctl.h>
+#include <sys/wait.h>
 
 #define FILE_BASE  "test"
 
