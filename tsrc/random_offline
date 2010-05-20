@@ -137,6 +137,7 @@ while true ; do
 		((DIFF = $(date +%s) - $start))
 		if [ $DIFF -gt "$RUNTIME" ] ; then
 			echo time over
+			trap 0
 			break
 		fi
 	fi
