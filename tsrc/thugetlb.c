@@ -111,7 +111,7 @@ static void read_bytes(char *addr, int flag, char *avoid)
 		for (j = 0; j < HPAGE_SIZE; j++) {
 			if (*(addr + i * HPAGE_SIZE + j) != (char)('a' +
 							   ((i + j) % 26))) {
-				printf("Mismatch at %lu\n", i + j);
+				printf("Mismatch at %u\n", i + j);
 				break;
 			}
 		}
