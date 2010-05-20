@@ -75,9 +75,12 @@ unpoison() {
 	while read i ; do 
 		#echo -n ,
 		#echo "u $i"
+		(( utotal++ ))
 	 	if ! echo $i | sed 's/000$//' > $DEBUG/hwpoison/unpoison-pfn ; then
 			echo "$i $?" >> unpoison-failed
 			echo "unpoisioning $i failed: $?"
+		else
+			(( usuccess++ ))
 		fi
 	done < offlined
 	echo done
@@ -95,6 +98,13 @@ echo "Using random seed $SEED"
 start=$(date +%s)
 failed=0
 ufailed=0
+success=0
+usuccess=0
+total=0
+utotal=0
+
+cbefore=$(grep HardwareCorrupted /proc/meminfo)
+
 
 (( k = 0 ))
 rm -f offlined unpoison-failed
@@ -105,8 +115,10 @@ while true ; do
 	echo 0x$X
 	) 
 	#echo "p $T" 
+	(( total++ )) 
 	if echo 2>/dev/null $T >/sys/devices/system/memory/soft_offline_page ; then
 		echo $T >> offlined
+		(( success++ )) 
 	else
 		#echo offlining $T failed $?
 		(( failed++ ))
@@ -131,8 +143,11 @@ done
 if [ -f unpoison-failed ] ; then
 	ufailed=$(wc -l unpoison-failed | awk ' {print $1}')
 fi
-echo "soft-poison-failed: $failed"
-echo "unpoison-failed:    $ufailed"
+echo "soft-poison: success $success failed $failed of total $total"
+echo "unpoison-failed: success $usuccess failed $ufailed of total $utotal"
+echo "poisoned before: $cbefore"
+echo -n "poisoned after: "
+grep HardwareCorrupted /proc/meminfo
 
 ### xxx automatic success/failure criteria?
 
