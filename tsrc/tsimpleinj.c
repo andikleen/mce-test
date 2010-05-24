@@ -21,6 +21,8 @@
 #define err(x) perror(x),exit(1)
 
 int count = 20;
+int failure = 0;
+int total_cases = 0;
 sigjmp_buf recover;
 int PS;
 
@@ -37,9 +39,12 @@ void sighandler(int sig, siginfo_t *si, void *arg)
 void testmem(char *msg, char *page, int write)
 {
 	printf("%s page %p\n", msg, page);
+	total_cases++;
 	if (sigsetjmp(recover,1) == 0) {
-		if (madvise(page, PS, MADV_POISON) != 0)
+		if (madvise(page, PS, MADV_POISON) != 0) {
+			failure++;
 			perror("madvise");
+		}
 		if (write)
 			*page = 2;
 		else
@@ -98,7 +103,7 @@ int main(void)
 	fd = tempfd();
 	if (fd < 0) err("open testfile");
 	char *tmp = malloc(PS);
-	if (!tmp) exit(ENOMEM);
+	if (!tmp) err("no enough memory");
 	memset(tmp, 0xff, PS);
 	write(fd, tmp, PS);
 	free(tmp);
@@ -147,6 +152,12 @@ int main(void)
 	expecterr("rfp fsync expect error", fsync(fd));
 	close(fd);
 #endif
+
+	if (failure > 0) {
+		printf("FAILURE -- %d of %d cases broken!\n", failure, total_cases);
+		return 1;
+	}
+	printf("SUCCESS\n");
 
 	return 0;
 }	
