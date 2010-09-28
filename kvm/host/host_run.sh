@@ -28,6 +28,7 @@ GUEST_DIR="/test"
 host_key_pub="$HOST_DIR/id_rsa.pub"
 host_key_priv="$HOST_DIR/id_rsa"
 early_kill="1"
+RAM_size=""
 
 kernel=""
 initrd=""
@@ -50,8 +51,10 @@ usage()
 	echo -e "\t\t\tBy default, host privite key is $host_key_priv"
 	echo -e "\t-o offset\t: guest image offset (optional) "
 	echo -e "\t\t\tBy default, offset is calculated by kpartx "
-        echo -e "\t-l latekill\t: disable early kill in guest system"
+        echo -e "\t-l\t\t: late kill, disable early kill in guest system"
         echo -e "\t\t\tBy default, earlykill is enabled "
+        echo -e "\t-m ramsize\t: virtual RAM size of guest system"
+        echo -e "\t\t\tBy default, qemu-kvm defaults to 128M bytes"
 	echo "============If you want to specify the guest kernel==========="
 	echo "============please set below options all together============="
 	echo -e "\t-k kernel\t: guest kernel"
@@ -60,10 +63,10 @@ usage()
 	exit 0
 }
 
-while getopts ":i:f:d:g:o:b:p:k:n:r:h:l" option
+while getopts ":i:f:d:g:o:b:p:k:n:r:h:lm:" option
 do
         case $option in
-		i) image=$OPTARG; offset=`kpartx -l $image | awk '{print $NF*512}'`;;
+		i) image=$OPTARG; offset=`kpartx -l $image | awk '/loop deleted/ {next}; {offset=$NF*512}; END {print offset}'`;;
 		f) mce_inject_file=$OPTARG;;
 		d) HOST_DIR=$OPTARG; host_key_pub=$HOST_DIR/id_rsa.pub; host_key_priv=$HOST_DIR/id_rsa;;
 		g) GUEST_DIR=$OPTARG;;
@@ -74,6 +77,7 @@ do
 		k) kernel=$OPTARG;;
 		n) initrd=$OPTARG;;
 		r) root=$OPTARG;;
+		m) RAM_size="-m $OPTARG";;
 		h) usage;;
 		*) echo "invalid option!"; usage;;
         esac
@@ -116,17 +120,74 @@ check_env()
 	chmod 600 $host_key_priv
 }
 
-#Guest Image Preparation
-image_prepare()
+mount_image()
 {
 	mnt=`mktemp -d`
-	mount -oloop,offset=$offset $image $mnt && echo "mount image to $mnt "
-	if [ $? -ne 0 ]; then
-	    echo "mount image failed!"
+	mount_err=`mount -oloop,offset=$offset $image $mnt 2>&1`
+	if [ $? -eq 0 ]; then
+	    fs_type=unset
+	    echo "mount image to $mnt"
+	    return 0
+	fi
+
+	#See if we're dealing with a LVM filesystem type
+	fs_type=`echo $mount_err | awk '/^mount: unknown filesystem type/ {print $NF}'`
+	if [ $fs_type != "'LVM2_member'" ]; then
+	    echo unknown filesystem type
+	    rm -rf $mnt
 	    return 1
 	fi
 
-	[ ! -e $mnt$guest_script ] && umount $mnt && invalid "Invalid guest directory!"
+	#Try mounting the LVM image
+	loop_dev=`losetup -o ${offset} -f --show ${image}`
+	if [ -z ${loop_dev} ]; then
+	    echo no available loop device
+	    rm -rf $mnt
+	    return 1
+	fi
+	vg=`pvdisplay ${loop_dev} | awk '/  VG Name/ {print $NF}'`
+	lv=lv_root
+	vgchange -a ey ${vg}
+	if [ ! -b /dev/mapper/${vg}-${lv} ]; then
+	    echo ! block special
+	    losetup -d ${loop_dev}
+	    rm -rf $mnt
+	    return 1
+	fi
+	mount /dev/mapper/${vg}-${lv} $mnt
+	if [ $? -ne 0 ]; then
+	    vgchange -a en ${vg}
+	    losetup -d ${loop_dev}
+	    rm -rf $mnt
+	    return 1
+	fi
+	echo "mount LVM image to $mnt"
+	return 0
+}
+
+umount_image()
+{
+	umount $mnt
+	sleep 2
+	if [ $fs_type = "'LVM2_member'" ]; then
+	    vgchange -a en ${vg}
+	    losetup -d ${loop_dev}
+	fi
+	rm -rf $mnt
+}
+
+#Guest Image Preparation
+image_prepare()
+{
+	mount_image
+	if [ $? -ne 0 ]; then
+	    echo "mount of image failed!"
+	    return 1
+	fi
+	if [ ! -e $mnt$guest_script ]; then
+	    umount_image
+	    invalid "Invalid guest directory!"
+	fi
 	rm -f $mnt/etc/rc3.d/S99kvm_ras
 	rm -f $mnt$guest_tmp $mnt$guest_page
 
@@ -140,9 +201,7 @@ image_prepare()
 	chmod a+x $mnt$kvm_ras
 	ln -s $kvm_ras $mnt/etc/rc3.d/S99kvm_ras
 	sleep 2
-	umount $mnt
-	sleep 2
-	rm -rf $mnt
+	umount_image
 	return 0
 }
 
@@ -155,8 +214,8 @@ start_guest()
 		if [ ! -z $root ]; then
 		    append="root=$root ro loglevel=8 mce=3 console=ttyS0,115200n8 console=tty0"
 	            qemu-system-x86_64 -hda $image -kernel $kernel -initrd $initrd --append "$append" \
-		    -net nic,model=rtl8139 -net user,hostfwd=tcp::5555-:22 -monitor pty -serial pty \
-		    -pidfile $pid_file > $host_start 2>&1 &
+		    $RAM_size -net nic,model=rtl8139 -net user,hostfwd=tcp::5555-:22 \
+		    -monitor pty -serial pty -pidfile $pid_file > $host_start 2>&1 &
 		    sleep 5
 		else
 		    invalid "please specify the guest root partition!"
@@ -166,7 +225,8 @@ start_guest()
 	    fi
 	else
 	    echo "Start the default kernel on guest system"
-	    qemu-system-x86_64 -hda $image -net nic,model=rtl8139 -net user,hostfwd=tcp::5555-:22 \
+	    qemu-system-x86_64 -hda $image \
+	    $RAM_size -net nic,model=rtl8139 -net user,hostfwd=tcp::5555-:22 \
 	    -monitor pty -serial pty -pidfile $pid_file > $host_start 2>&1 &
 	    sleep 5
 	fi
@@ -225,6 +285,7 @@ error_inj()
 	#Inject SRAO error
 	cat $mce_inject_file > $mce_inject_data
 	echo "ADDR $ADDR" >> $mce_inject_data
+	echo "calling mce-inject $mce_inject_data"
 	mce-inject $mce_inject_data
 }
 
