@@ -83,16 +83,51 @@ void *xmalloc(size_t s)
 	return p;
 }
 
+static int ilog2(int n)
+{
+	int r = 0;
+	n--;
+	while (n) {
+		n >>= 1;
+		r++;
+	}
+	return r;
+}
+
 int recovercount;
 sigjmp_buf recover_ctx;
 sigjmp_buf early_recover_ctx;
 void *expected_addr;
+
+/* Work around glibc not defining this yet */
+struct my_siginfo {
+	int si_signo;
+	int si_errno;
+	int si_code;
+	union {
+	struct {
+		void  *_addr; /* faulting insn/memory ref. */
+#ifdef __ARCH_SI_TRAPNO
+		int _trapno;	/* TRAP # which caused the signal */
+#endif
+		short _addr_lsb; /* LSB of the reported address */
+	} _sigfault;
+	} _sifields;
+};
+#undef si_addr_lsb
+#define si_addr_lsb _sifields._sigfault._addr_lsb
 
 void sighandler(int sig, siginfo_t *si, void *arg)
 {
 	if (si->si_addr != expected_addr) {
 		printf("XXX: Unexpected address in signal %p (expected %p)\n", si->si_addr,
 			expected_addr);
+		failure++;
+	}
+
+	int lsb = ((struct my_siginfo *)si)->si_addr_lsb;
+	if (lsb != ilog2(sysconf(_SC_PAGE_SIZE))) {
+		printf("XXX: Unexpected addr lsb in siginfo %d\n", lsb);
 		failure++;
 	}
 
