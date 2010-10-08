@@ -1,12 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <dirent.h>
 #include <sys/mman.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
 int HPS;
-#define err(x) perror(x), exit(1)
+char hugetlbfsdir[256];
+#ifndef UTILS
+#include "utils.h"
+#endif
 #define errmsg(x) fprintf(stderr, x), exit(1)
 
 void write_hugepage(char *addr, int size, char *avoid)
@@ -61,6 +65,21 @@ int hugetlbfs_root(char *dir)
 	if (!found)
 		printf("cannot find hugetlbfs directory in /proc/mounts\n");
 	return found;
+}
+
+/* Assume there is only one types of hugepage size for now. */
+int gethugepagesize(void)
+{
+	int hpagesize = 0;
+	struct dirent *dent;
+	DIR *dir;
+	dir = opendir("/sys/kernel/mm/hugepages");
+	if (!dir) err("open /sys/kernel/mm/hugepages");
+	while ((dent = readdir(dir)) != NULL)
+		if (sscanf(dent->d_name, "hugepages-%dkB", &hpagesize) >= 1)
+			break;
+	closedir(dir);
+	return hpagesize * 1024;
 }
 
 void *alloc_shm_hugepage(int *key, int size)
