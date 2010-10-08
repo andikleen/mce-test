@@ -2,6 +2,7 @@
  * Test program for memory error handling for hugepages
  * Author: Naoya Horiguchi <n-horiguchi@ah.jp.nec.com>
  */
+#define _GNU_SOURCE 1
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h> 
@@ -16,6 +17,7 @@
 #include <sys/types.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
+#include "hugepage.h"
 
 #define FILE_BASE  "test"
 
@@ -36,6 +38,9 @@
 #define PR_MCE_KILL_DEFAULT 2
 #define PR_MCE_KILL_GET 34
 
+#define MADV_HWPOISON		100
+#define MADV_SOFT_OFFLINE	101
+
 int PS; /* Page size */
 int file_size; /* Memory allocation size (hugepage unit) */
 /* Error injection position (page offset from the first hugepage head) */
@@ -45,16 +50,14 @@ char filepath[BUF_SIZE];
 
 #define DEB printf("DEBUG [%d:%s:%d]\n", getpid(), __FILE__, __LINE__);
 
-#define err(x) perror(x), exit(1)
-#define errmsg(x) fprintf(stderr, x), exit(1)
-
 static void usage(void)
 {
 	printf(
-"./thugetlb [-m memory] [-o offset] [-f file] [-xeSAaFpch] hugetlbfs_directory\n"
+"./thugetlb [-m memory] [-o offset] [-f file] [-xOeSAaFpch] hugetlbfs_directory\n"
 "            -m|--memory size(hugepage unit)    Size of hugetlbfs file\n"
 "            -o|--offset offset(page unit)      Position of error injection\n"
 "            -x|--inject                        Error injection switch\n"
+"            -O|--offline                       Soft offline switch\n"
 "            -e|--early-kill                    Set PR_MCE_KILL_EARLY\n"
 "            -S|--shm                           Use shmem with SHM_HUGETLB\n"
 "            -A|--anonymous                     Use MAP_ANONYMOUS\n"
@@ -87,45 +90,11 @@ int put_semaphore(int sem_id, struct sembuf *sembuffer)
 	return semop(sem_id, sembuffer, 1);
 }
 
-static int avoid_hpage(void *addr, int flag, char *avoid)
-{
-	return flag == 1 && addr == avoid;
-}
-
-static void write_bytes(char *addr, int flag, char *avoid)
-{
-	int i, j;
-	for (i = 0; i < file_size; i++) {
-		if (avoid_hpage(addr + i * HPAGE_SIZE, flag, avoid))
-			continue;
-		for (j = 0; j < HPAGE_SIZE; j++) {
-			*(addr + i * HPAGE_SIZE + j) = (char)('a' +
-							      ((i + j) % 26));
-		}
-	}
-}
-
-static void read_bytes(char *addr, int flag, char *avoid)
-{
-	int i, j;
-
-	for (i = 0; i < file_size; i++) {
-		if (avoid_hpage(addr + i * HPAGE_SIZE, flag, avoid))
-			continue;
-		for (j = 0; j < HPAGE_SIZE; j++) {
-			if (*(addr + i * HPAGE_SIZE + j) != (char)('a' +
-							   ((i + j) % 26))) {
-				printf("Mismatch at %u\n", i + j);
-				break;
-			}
-		}
-	}
-}
-
 static struct option opts[] = {
 	{ "memory"          , 1, NULL, 'm' },
 	{ "offset"          , 1, NULL, 'o' },
 	{ "inject"          , 0, NULL, 'x' },
+	{ "offline"         , 0, NULL, 'O' },
 	{ "early_kill"      , 0, NULL, 'e' },
 	{ "shm"             , 0, NULL, 'S' },
 	{ "anonymous"       , 0, NULL, 'A' },
@@ -144,10 +113,10 @@ int main(int argc, char *argv[])
 	int i;
 	int ret;
 	int fd = 0;
-	int shmid;
 	int semid;
 	int semaphore;
 	int inject = 0;
+	int madvise_code = MADV_HWPOISON;
 	int early_kill = 0;
 	int avoid_touch = 0;
 	int anonflag = 0;
@@ -162,6 +131,7 @@ int main(int argc, char *argv[])
 	struct sembuf sembuffer;
 
 	PS = getpagesize();
+	HPS = HPAGE_SIZE;
 	file_size = 1;
 	corrupt_page = -1;
 
@@ -171,7 +141,7 @@ int main(int argc, char *argv[])
 	}
 
 	while ((c = getopt_long(argc, argv,
-				"m:o:xeSAaFpcf:h", opts, NULL)) != -1) {
+				"m:o:xOeSAaFpcf:h", opts, NULL)) != -1) {
 		switch (c) {
 		case 'm':
 			file_size = strtol(optarg, NULL, 10);
@@ -181,6 +151,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'x':
 			inject = 1;
+			break;
+		case 'O':
+			madvise_code = MADV_SOFT_OFFLINE;
 			break;
 		case 'e':
 			early_kill = 1;
@@ -232,38 +205,23 @@ int main(int argc, char *argv[])
 	}
 
 	if (shmflag) {
-		if ((shmid = shmget(shmkey, file_size * HPAGE_SIZE,
-				    SHM_HUGETLB | IPC_CREAT | SHM_R | SHM_W)) < 0)
-			err("shmget");
-		addr = shmat(shmid, (void *)0x0UL, 0);
-		if (addr == (char *)-1) {
-			perror("Shared memory attach failure");
-			shmctl(shmid, IPC_RMID, NULL);
-			exit(2);
-		}
+		addr = alloc_shm_hugepage(&shmkey, file_size * HPAGE_SIZE);
+		if (!addr)
+			errmsg("Failed in alloc_shm_hugepage()");
 	} else if (anonflag) {
-		int mapflag = MAP_ANONYMOUS | 0x40000; /* MAP_HUGETLB */
-		if (privateflag)
-			mapflag |= MAP_PRIVATE;
-		else
-			mapflag |= MAP_SHARED;
-		if ((addr = mmap(0, file_size * HPAGE_SIZE,
-				 PROTECTION, mapflag, -1, 0)) == MAP_FAILED)
-			err("mmap");
+		addr = alloc_anonymous_hugepage(file_size * HPAGE_SIZE,
+						privateflag);
+		if (!addr)
+			errmsg("Failed in alloc_anonymous_hugepage()");
 	} else {
-		int mapflag = MAP_SHARED;
-		if (privateflag)
-			mapflag = MAP_PRIVATE;
-		if ((fd = open(filepath, O_CREAT | O_RDWR, 0777)) < 0)
-			err("Open failed");
-		if ((addr = mmap(0, file_size * HPAGE_SIZE,
-				 PROTECTION, mapflag, fd, 0)) == MAP_FAILED) {
-			unlink(filepath);
-			err("mmap");
-		}
+		addr = alloc_filebacked_hugepage(filepath,
+						 file_size * HPAGE_SIZE,
+						 privateflag, &fd);
+		if (!addr)
+			errmsg("Failed in alloc_filebacked_hugepage()");
 	}
 
-	if (corrupt_page != -1)
+	if (corrupt_page != -1 && avoid_touch)
 		expected_addr = (void *)(addr + corrupt_page / 512 * HPAGE_SIZE);
 
 	if (forkflag) {
@@ -283,8 +241,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	write_bytes(addr, 0, 0);
-	read_bytes(addr, 0, 0);
+	write_hugepage(addr, file_size, 0);
+	read_hugepage(addr, file_size, 0);
 
 	if (early_kill)
 		prctl(PR_MCE_KILL, PR_MCE_KILL_SET, PR_MCE_KILL_EARLY,
@@ -301,8 +259,8 @@ int main(int argc, char *argv[])
 		if (!pid) {
 			/* Semaphore is already held */
 			if (cowflag) {
-				write_bytes(addr, 0, expected_addr);
-				read_bytes(addr, 0, expected_addr);
+				write_hugepage(addr, 0, expected_addr);
+				read_hugepage(addr, 0, expected_addr);
 			}
 			if (put_semaphore(semid, &sembuffer))
 				err("put_semaphore");
@@ -323,7 +281,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (inject && corrupt_page != -1) {
-		ret = madvise(addr + corrupt_page * PS, PS, 100);
+		ret = madvise(addr + corrupt_page * PS, PS, madvise_code);
 		if (ret) {
 			printf("madivise return %d :", ret);
 			perror("madvise");
@@ -336,27 +294,27 @@ int main(int argc, char *argv[])
 		goto cleanout;
 	}
 
-	write_bytes(addr, avoid_touch, expected_addr);
-	read_bytes(addr, avoid_touch, expected_addr);
+	if (madvise_code != MADV_SOFT_OFFLINE);
+		write_hugepage(addr, file_size, expected_addr);
+	read_hugepage(addr, file_size, expected_addr);
 
-	if (forkflag)
+	if (forkflag) {
 		if (wait(&i) == -1)
 			err("wait");
+		if (semctl(semid, 0, IPC_RMID) == -1)
+			err("semctl(IPC_RMID)");
+	}
 cleanout:
 	if (shmflag) {
-		if (shmdt((const void *)addr) != 0) {
-			err("Detach failure");
-			shmctl(shmid, IPC_RMID, NULL);
-			exit(EXIT_FAILURE);
-		}
-		shmctl(shmid, IPC_RMID, NULL);
+		if (free_shm_hugepage(shmkey, addr) == -1)
+			exit(2);
+	} else if (anonflag) {
+		if (free_anonymous_hugepage(addr, file_size * HPAGE_SIZE) == -1)
+			exit(2);
 	} else {
-		if (munmap(addr, file_size * HPAGE_SIZE))
-			err("munmap");
-		if (close(fd))
-			err("close");
-		if (!anonflag && unlink(filepath))
-			err("unlink");
+		if (free_filebacked_hugepage(addr, file_size * HPAGE_SIZE,
+					     fd, filepath) == -1)
+			exit(2);
 	}
 
 	return 0;
