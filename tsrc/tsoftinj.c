@@ -27,6 +27,7 @@
 #include <sys/fcntl.h>
 #include <stdlib.h>
 #include <errno.h>
+#include "hugepage.h"
 
 #define MADV_SOFT_OFFLINE 101
 
@@ -37,6 +38,7 @@ int PS;
 int exitcode;
 char empty[4096];
 int corrupted;
+char hugetlbfsdir[256];
 
 void *checked_mmap(void *addr, size_t length, int prot, int flags,
                   int fd, off_t offset)
@@ -73,6 +75,11 @@ unsigned meminfo(char *fmt)
 unsigned hardware_corrupted(void)
 {
 	return (meminfo("HardwareCorrupted: %u") * 1024) / PS;
+}
+
+unsigned gethugepagesize(void)
+{
+	return (meminfo("Hugepagesize: %u") * 1024);
 }
 
 char *ndesc(char *buf, char *a, char *b)
@@ -116,15 +123,55 @@ void anonymous(char *name, int flags)
 	munmap(p, PS);
 }
 
-void check(unsigned *count, char *name)
+void shm_hugepage(char *name, int flags)
+{
+	int shmid = 0;
+	char buf[100];
+	char *p = alloc_shm_hugepage(&shmid, HPS);
+	if (!p)
+		errmsg("failed in alloc_shm_hugepage\n");
+	printf("shm hugepage\n");
+	*(volatile int *)p = 1;
+	offline(ndesc(buf, "shm hugepage", name), p);
+	*(volatile int *)p = 1;
+	free_shm_hugepage(shmid, p);
+}
+
+void anonymous_hugepage(char *name, int flags)
+{
+	char buf[100];
+	char *p = alloc_anonymous_hugepage(HPS, 1);
+	printf("anonymous hugepage\n");
+	*(volatile int *)p = 1;
+	offline(ndesc(buf, "anonymous hugepage", name), p);
+	*(volatile int *)p = 1;
+	free_anonymous_hugepage(p, HPS);
+}
+
+void filebacked_hugepage(char *name, int flags)
+{
+	int fd;
+	char path[100];
+	char fn[100];
+	snprintf(path, sizeof path, "%s/~test-hugepage%u",
+		 hugetlbfsdir, getpid());
+	char *p = alloc_filebacked_hugepage(path, HPS, 0, &fd);
+	printf("file backed hugepage\n");
+	*(volatile int *)p = 1;
+	offline(ndesc(fn, "file backed hugepage", name), p);
+	*(volatile int *)p = 1;
+	free_filebacked_hugepage(p, HPS, fd, path);
+}
+
+void check(unsigned *count, char *name, unsigned expected)
 {
 	unsigned count2 = hardware_corrupted();
 	unsigned diff = count2 - *count;
-	if (diff != corrupted) {
+	if (diff != expected) {
 		printf("%s: expected %d corrupted pages, got %u\n", name,
-			corrupted, 
+			expected,
 			diff);	
-		if (diff < corrupted)
+		if (diff < expected)
 			exitcode = 1;
 	}
 	*count = count2;
@@ -134,17 +181,25 @@ void check(unsigned *count, char *name)
 int main(void)
 {
 	PS = getpagesize();
+	HPS = gethugepagesize();
 
 	unsigned count = hardware_corrupted();
-	
-	anonymous("anonymous", 0);	
-	check(&count, "anonymous");
-	anonymous("anonymous mlock", MAP_LOCKED);	
-	check(&count, "anonymous mlock");
+	if (!hugetlbfs_root(hugetlbfsdir))
+		err("hugetlbfs_root");
+	anonymous("anonymous", 0);
+	check(&count, "anonymous", 1);
+	anonymous("anonymous mlock", MAP_LOCKED);
+	check(&count, "anonymous mlock", 1);
 	disk_backed("disk backed", 0);
-	check(&count, "disk backed");
+	check(&count, "disk backed", 1);
 	disk_backed("disk backed mlock", 0);
-	check(&count, "disk backed mlock");
+	check(&count, "disk backed mlock", 1);
+	shm_hugepage("shm hugepage", 0);
+	check(&count, "shm hugepage", HPS / PS);
+	anonymous_hugepage("anonymous hugepage", 0);
+	check(&count, "anonymous hugepage", HPS / PS);
+	filebacked_hugepage("file backed hugepage", 0);
+	check(&count, "file backed hugepage", HPS / PS);
 	// add more test cases here
 
 	return exitcode;
