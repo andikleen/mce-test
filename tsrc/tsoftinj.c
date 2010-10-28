@@ -31,14 +31,12 @@
 
 #define MADV_SOFT_OFFLINE 101
 
-#define err(x) perror(x), exit(1)
 #define TMPDIR "./"
 
 int PS;
 int exitcode;
 char empty[4096];
 int corrupted;
-char hugetlbfsdir[256];
 
 void *checked_mmap(void *addr, size_t length, int prot, int flags,
                   int fd, off_t offset)
@@ -75,11 +73,6 @@ unsigned meminfo(char *fmt)
 unsigned hardware_corrupted(void)
 {
 	return (meminfo("HardwareCorrupted: %u") * 1024) / PS;
-}
-
-unsigned gethugepagesize(void)
-{
-	return (meminfo("Hugepagesize: %u") * 1024);
 }
 
 char *ndesc(char *buf, char *a, char *b)
