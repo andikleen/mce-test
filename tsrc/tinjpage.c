@@ -3,7 +3,7 @@
  * This injects poison into various mapping cases and triggers the poison
  * handling.  Requires special injection support in the kernel.
  * 
- * Copyright 2009 Intel Corporation
+ * Copyright 2009, 2010 Intel Corporation
  *
  * tinjpage is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public
@@ -37,13 +37,14 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
+#include "utils.h"
+#include "hugepage.h"
 
 #define MADV_POISON 100
 
 #define TMPDIR "./"
 #define PATHBUFLEN 100
 
-#define err(x) perror(x),exit(1)
 #define Perror(x) failure++, perror(x)
 #define PAIR(x) x, sizeof(x)-1
 #define mb() asm volatile("" ::: "memory")
@@ -53,10 +54,13 @@
 #define cpu_relax() mb()
 #endif
 
+typedef unsigned long long u64;
+
 int PS;
 int failure;
 int unexpected;
 int early_kill;
+int test_hugepage;
 
 void *checked_mmap(void *start, size_t length, int prot, int flags,
                    int fd, off_t offset)
@@ -83,10 +87,39 @@ void *xmalloc(size_t s)
 	return p;
 }
 
+static int ilog2(int n)
+{
+	int r = 0;
+	n--;
+	while (n) {
+		n >>= 1;
+		r++;
+	}
+	return r;
+}
+
 int recovercount;
 sigjmp_buf recover_ctx;
 sigjmp_buf early_recover_ctx;
 void *expected_addr;
+
+/* Work around glibc not defining this yet */
+struct my_siginfo {
+	int si_signo;
+	int si_errno;
+	int si_code;
+	union {
+	struct {
+		void  *_addr; /* faulting insn/memory ref. */
+#ifdef __ARCH_SI_TRAPNO
+		int _trapno;	/* TRAP # which caused the signal */
+#endif
+		short _addr_lsb; /* LSB of the reported address */
+	} _sigfault;
+	} _sifields;
+};
+#undef si_addr_lsb
+#define si_addr_lsb _sifields._sigfault._addr_lsb
 
 void sighandler(int sig, siginfo_t *si, void *arg)
 {
@@ -94,6 +127,17 @@ void sighandler(int sig, siginfo_t *si, void *arg)
 		printf("XXX: Unexpected address in signal %p (expected %p)\n", si->si_addr,
 			expected_addr);
 		failure++;
+	}
+
+	int lsb = ((struct my_siginfo *)si)->si_addr_lsb;
+	if (test_hugepage) {
+		if (lsb != ilog2(HPS)) {
+			printf("LATER: Unexpected addr lsb in siginfo %d\n", lsb);
+		}
+	} else {
+		if (lsb != ilog2(sysconf(_SC_PAGE_SIZE))) {
+			printf("LATER: Unexpected addr lsb in siginfo %d\n", lsb);
+		}
 	}
 
 	printf("\tsignal %d code %d addr %p\n", sig, si->si_code, si->si_addr);
@@ -117,22 +161,79 @@ enum rmode {
 	MNOTHING = -1,
 };
 
+void inject_madvise(char *page)
+{
+	if (madvise(page, PS, MADV_POISON) != 0) {
+		if (errno == EINVAL) {
+			printf("Kernel doesn't support poison injection\n");
+			exit(0);
+		}
+		Perror("madvise");
+	}
+}
+
+u64 page_to_pfn(char *page)
+{
+	static int pagemap_fd = -1;
+	u64 pfn;
+
+	if (pagemap_fd < 0)  {
+		pagemap_fd = open("/proc/self/pagemap", O_RDONLY); 
+		if (pagemap_fd < 0)
+			err("/proc/self/pagemap not supported");
+	}
+
+	if (pread(pagemap_fd, &pfn, sizeof(u64), 
+		((u64)page / PS)*sizeof(u64)) != sizeof(u64))
+		err("Cannot read from pagemap");
+
+	pfn &= (1ULL<<56)-1; 
+	return pfn;
+}
+
+/* 
+ * Inject Action Optional #MC 
+ * with mce-inject using the software injector.
+ * 
+ * This tests the low level machine check handler too.
+ * 
+ * Slightly racy with page migration because we don't mlock the page.
+ */
+void inject_mce_inject(char *page)
+{
+	u64 pfn = page_to_pfn(page);
+	FILE *mce_inject;
+
+	mce_inject = popen("mce-inject", "w");
+	if (!mce_inject) {
+		fprintf(stderr, "Cannot open pipe to mce-inject: %s\n",
+				strerror(errno));
+		exit(1);
+	}
+
+	fprintf(mce_inject, 
+		"CPU 0 BANK 3 STATUS UNCORRECTED SRAO 0xc0\n"
+		"MCGSTATUS RIPV MCIP\n"
+		"ADDR %#llx\n"
+		"MISC 0x8c\n"
+		"RIP 0x73:0x1eadbabe\n", pfn);
+
+	if (ferror(mce_inject) || fclose(mce_inject) < 0) { 
+		fprintf(stderr, "mce-inject failed: %s\n", strerror(errno));
+		exit(1);
+	} 
+}
+
+void (*inject)(char *page) = inject_madvise;
+
 void poison(char *msg, char *page, enum rmode mode)
 {
 	expected_addr = page;
 	recovercount = 5;
 
 	if (sigsetjmp(early_recover_ctx, 1) == 0) {
-
-		if (madvise(page, PS, MADV_POISON) != 0) {
-			if (errno == EINVAL) {
-				printf("Kernel doesn't support poison injection\n");
-				exit(0);
-			}
-			Perror("madvise");
-			return;
-		}
-
+		inject(page);
+		
 		if (early_kill && (mode == MWRITE || mode == MREAD)) {
 			printf("XXX: %s: process is not early killed\n", msg);
 			failure++;
@@ -687,6 +788,55 @@ static void ipv_shared(void)
 	do_shared(IPV_SHARED);
 }
 
+static void anonymous_hugepage(void)
+{
+	char *page;
+	/* Hugepage isn't supported. */
+	if (!HPS)
+		return;
+	test_hugepage = 1;
+	page = alloc_anonymous_hugepage(HPS, 1);
+	/* prefault */
+	page[0] = 'a';
+	testmem("anonymous hugepage", page, MWRITE);
+	free_anonymous_hugepage(page, HPS);
+	test_hugepage = 0;
+}
+
+static void file_backed_hugepage(void)
+{
+	char *page;
+	char buf[PATHBUFLEN];
+	int fd;
+	/* Hugepage isn't supported. */
+	if (!HPS)
+		return;
+	test_hugepage = 1;
+	snprintf(buf, PATHBUFLEN, "%s/test%d", hugetlbfsdir, tmpcount++);
+	page = alloc_filebacked_hugepage(buf, HPS, 0, &fd);
+	/* prefault */
+	page[0] = 'a';
+	testmem("file backed hugepage", page, MWRITE);
+	free_filebacked_hugepage(page, HPS, fd, buf);
+	test_hugepage = 0;
+}
+
+static void shm_hugepage(void)
+{
+	char *page;
+	/* Hugepage isn't supported. */
+	if (!HPS)
+		return;
+	test_hugepage = 1;
+	page = alloc_shm_hugepage(&tmpcount, HPS);
+	/* prefault */
+	page[0] = 'a';
+	testmem("shared memory hugepage", page, MWRITE);
+	free_shm_hugepage(tmpcount, page);
+	tmpcount++;
+	test_hugepage = 0;
+}
+
 struct testcase {
 	void (*f)(void);
 	char *name;
@@ -703,6 +853,9 @@ struct testcase {
 	{ nonlinear, "nonlinear" },
 	{ mmap_shared, "mmap shared" },
 	{ ipv_shared, "ipv shared" },
+	{ anonymous_hugepage, "anonymous hugepage" },
+	{ file_backed_hugepage, "file backed hugepage" },
+	{ shm_hugepage, "shared memory hugepage" },
 	{},	/* dummy 1 for sniper */
 	{},	/* dummy 2 for sniper */
 	{}
@@ -717,20 +870,26 @@ void usage(void)
 {
 	fprintf(stderr, "Usage: tinjpage [--sniper]\n"
 			"Test hwpoison injection on pages in various states\n"
-			"--sniper: Enable racy sniper tests (likely broken)\n");
+			"--mce-inject    Use mce-inject for injection\n"
+			"--sniper  Enable racy sniper tests (likely broken)\n");
 	exit(1);
 }
 
 void handle_opts(char **av)
 {
-	if (!strcmp(av[1], "--sniper")) { 
-		struct testcase *t;
-		for (t = cases; t->f; t++)
-			;
-		*t++ = snipercases[0];
-		*t++ = snipercases[1];
-	} else 
-		usage();
+	while (*++av) { 
+		if (!strcmp(*av, "--sniper")) { 
+			struct testcase *t;
+			for (t = cases; t->f; t++)
+				;
+			*t++ = snipercases[0];
+			*t++ = snipercases[1];
+		}
+		else if (!strcmp(*av, "--mce-inject")) { 
+			inject = inject_mce_inject;			
+		} else 
+			usage();
+	}
 }
 
 int main(int ac, char **av)
@@ -739,6 +898,8 @@ int main(int ac, char **av)
 		handle_opts(av);
 
 	PS = getpagesize();
+	if (hugetlbfs_root(hugetlbfsdir))
+		HPS = gethugepagesize();
 
 	/* don't kill me at poison time, but possibly at page fault time */
 	early_kill = 0;
