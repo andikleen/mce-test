@@ -259,8 +259,8 @@ int main(int argc, char *argv[])
 		if (!pid) {
 			/* Semaphore is already held */
 			if (cowflag) {
-				write_hugepage(addr, 0, expected_addr);
-				read_hugepage(addr, 0, expected_addr);
+				write_hugepage(addr, file_size, 0);
+				read_hugepage(addr, file_size, 0);
 			}
 			if (put_semaphore(semid, &sembuffer))
 				err("put_semaphore");
