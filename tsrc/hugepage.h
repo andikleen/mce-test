@@ -13,11 +13,18 @@ char hugetlbfsdir[256];
 #endif
 #define errmsg(x) fprintf(stderr, x), exit(1)
 
-void write_hugepage(char *addr, int size, char *avoid)
+/*
+ * Function    : write_hugepage(char *addr, int nr_hugepage, char *avoid_addr)
+ * Parameters  :
+ *     addr            head address of hugepage range
+ *     nr_hugepage     hugepage number from head address
+ *     avoid_addr      the address which avoid to be operated
+ */
+void write_hugepage(char *addr, int nr_hugepage, char *avoid_addr)
 {
 	int i, j;
-	for (i = 0; i < size; i++) {
-		if ((addr + i * HPS) == avoid)
+	for (i = 0; i < nr_hugepage; i++) {
+		if ((addr + i * HPS) == avoid_addr)
 			continue;
 		for (j = 0; j < HPS; j++) {
 			*(addr + i * HPS + j) = (char)('a' + ((i + j) % 26));
@@ -25,14 +32,24 @@ void write_hugepage(char *addr, int size, char *avoid)
 	}
 }
 
-/* return -1 if buffer content differs from the expected ones */
-int read_hugepage(char *addr, int size, char *avoid)
+/*
+ * Function    : read_hugepage(char *addr, int nr_hugepage, char *avoid_addr)
+ * Parameters  :
+ *     addr            head address of hugepage range
+ *     nr_hugepage     hugepage number from head address
+ *     avoid_addr      the address which avoid to be operated
+ *
+ * return      :
+ *     0               OK
+ *     -1              if buffer content differs from the expected ones
+ */
+int read_hugepage(char *addr, int nr_hugepage, char *avoid_addr)
 {
 	int i, j;
 	int ret = 0;
 
-	for (i = 0; i < size; i++) {
-		if ((addr + i * HPS) == avoid)
+	for (i = 0; i < nr_hugepage; i++) {
+		if ((addr + i * HPS) == avoid_addr)
 			continue;
 		for (j = 0; j < HPS; j++) {
 			if (*(addr + i * HPS + j) != (char)('a' + ((i + j) % 26))) {
