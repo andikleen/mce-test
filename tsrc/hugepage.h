@@ -17,7 +17,7 @@ void write_hugepage(char *addr, int size, char *avoid)
 {
 	int i, j;
 	for (i = 0; i < size; i++) {
-		if (addr == avoid)
+		if ((addr + i * HPS) == avoid)
 			continue;
 		for (j = 0; j < HPS; j++) {
 			*(addr + i * HPS + j) = (char)('a' + ((i + j) % 26));
@@ -32,7 +32,7 @@ int read_hugepage(char *addr, int size, char *avoid)
 	int ret = 0;
 
 	for (i = 0; i < size; i++) {
-		if (addr == avoid)
+		if ((addr + i * HPS) == avoid)
 			continue;
 		for (j = 0; j < HPS; j++) {
 			if (*(addr + i * HPS + j) != (char)('a' + ((i + j) % 26))) {
