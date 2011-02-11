@@ -40,6 +40,7 @@
 #include <sys/shm.h>
 #include <sys/sem.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 
 #define MADV_POISON 100
 
