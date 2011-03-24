@@ -1,0 +1,94 @@
+From 0f28a71580205954313a8f1b592c97f49f330f32 Mon Sep 17 00:00:00 2001
+From: root <root@Romely.(none)>
+Date: Tue, 15 Mar 2011 11:03:13 -0400
+Subject: [PATCH 2/2] x-gpa2hva, translate guest physical address to host virtual address
+
+Add command x-gpa2hva to translate guest physical address to host
+virtual address. Because gpa to hva translation is not consistent, so
+this command is only used for debugging.
+
+The x-gpa2hva command provides one step in a chain of translations from
+guest virtual to guest physical to host virtual to host physical. Host
+physical is then used to inject a machine check error. As a
+consequence the HWPOISON code on the host and the MCE injection code
+in qemu-kvm are exercised.
+
+v3:
+
+- Rename to x-gpa2hva
+- Remove QMP support, because gpa2hva is not consistent
+
+v2:
+
+- Add QMP support
+
+Signed-off-by: Max Asbock <masbock@linux.vnet.ibm.com>
+Signed-off-by: Jiajia Zheng <jiajia.zheng@intel.com>
+Signed-off-by: Huang Ying <ying.huang@intel.com>
+---
+ hmp-commands.hx |   15 +++++++++++++++
+ monitor.c       |   22 ++++++++++++++++++++++
+ 2 files changed, 37 insertions(+), 0 deletions(-)
+
+diff --git a/hmp-commands.hx b/hmp-commands.hx
+index 247fdf0..c7aaf1c 100644
+--- a/hmp-commands.hx
++++ b/hmp-commands.hx
+@@ -330,6 +330,21 @@ Start gdbserver session (default @var{port}=1234)
+ ETEXI
+ 
+     {
++        .name       = "x-gpa2hva",
++        .args_type  = "fmt:/,addr:l",
++        .params     = "/fmt addr",
++        .help       = "translate guest physical 'addr' to host virtual address, only for debugging",
++        .user_print = do_gpa2hva_print,
++        .mhandler.cmd_new = do_gpa2hva,
++    },
++
++STEXI
++@item x-gpa2hva @var{addr}
++@findex x-gpa2hva
++Translate guest physical @var{addr} to host virtual address, only for debugging.
++ETEXI
++
++    {
+         .name       = "x",
+         .args_type  = "fmt:/,addr:l",
+         .params     = "/fmt addr",
+diff --git a/monitor.c b/monitor.c
+index fdbf9f3..f18aa2a 100644
+--- a/monitor.c
++++ b/monitor.c
+@@ -2749,6 +2749,28 @@ static void do_inject_mce(Monitor *mon, const QDict *qdict)
+ }
+ #endif
+ 
++static void do_gpa2hva_print(Monitor *mon, const QObject *data)
++{
++    QInt *qint;
++
++    qint = qobject_to_qint(data);
++    monitor_printf(mon, "0x%lx\n", (unsigned long)qint->value);
++}
++
++static int do_gpa2hva(Monitor *mon, const QDict *qdict, QObject **ret_data)
++{
++    target_phys_addr_t paddr;
++    target_phys_addr_t size = TARGET_PAGE_SIZE;
++    void *vaddr;
++
++    paddr = qdict_get_int(qdict, "addr");
++    vaddr = cpu_physical_memory_map(paddr, &size, 0);
++    cpu_physical_memory_unmap(vaddr, size, 0, 0);
++    *ret_data = qobject_from_jsonf("%ld", (unsigned long)vaddr);
++
++    return 0;
++}
++
+ static int do_getfd(Monitor *mon, const QDict *qdict, QObject **ret_data)
+ {
+     const char *fdname = qdict_get_str(qdict, "fdname");
+-- 
+1.7.1
+
