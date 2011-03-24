@@ -11,7 +11,7 @@ start() {
     touch /root/jobdone
     mount -t debugfs null /sys/kernel/debug
     echo 1 > /sys/kernel/debug/mce/fake_ser_p
-    echo 1 > /proc/sys/vm/memory_failure_early_kill
+    echo EARLYKILL > /proc/sys/vm/memory_failure_early_kill
     sh GUESTRUN &
     return "$RETVAL"
 }
