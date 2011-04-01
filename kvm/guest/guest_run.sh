@@ -28,7 +28,7 @@ cd GUEST_DIR
 
 ./page-types -p `pidof simple_process` -LN -b anon > guest_page
 if [ -s guest_page ]; then
-	ADDR_KLOG=`awk '$2 != "offset" {print "0x"$2}' guest_page | sed -n -e '1p'`
+	ADDR_KLOG=`awk 'NR > 3 {print "0x"$2}' guest_page | sed -n -e '1p'`
 	ADDR=`echo $ADDR_KLOG"000"`
 	echo "guest physical address is $ADDR" > guest_tmp
 fi

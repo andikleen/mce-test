@@ -300,7 +300,7 @@ addr_translate()
 	echo x-gpa2hva $GUEST_PHY > $monitor_console
 	cat $monitor_console > $monitor_console_output &
 	sleep 5
-	HOST_VIRT=`awk '/address/{print $NF}' $monitor_console_output |cut -b 3-11`
+	HOST_VIRT=`awk '/qemu|QEMU/{next} {print $NF}' $monitor_console_output |cut -b 3-11`
 	echo "Host virtual address is $HOST_VIRT"
 
 	#Get Host physical address
