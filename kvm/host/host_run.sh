@@ -286,14 +286,14 @@ addr_translate()
 {
 	#Get Guest physical address
         scp -o StrictHostKeyChecking=no -i $host_key_priv -P 5555 \
-	localhost:$guest_tmp $guest_tmp > /dev/null 2>&1
+	localhost:$guest_tmp $HOST_DIR/guest_tmp > /dev/null 2>&1
 	if [ $? -ne 0 ]; then
 		echo "Failed to get Guest physical address, quit testing!"
 		kill -9 $QEMU_PID
 		exit 0
 	fi
 	sleep 2
-	GUEST_PHY=`awk '{print $NF}' $guest_tmp`
+	GUEST_PHY=`awk '{print $NF}' $HOST_DIR/guest_tmp`
 	echo "Guest physical address is $GUEST_PHY"
 	sleep 2
 
@@ -372,5 +372,5 @@ else
     fi
 fi
 
-rm -f $host_start $monitor_console_output $serail_console_output $host_tmp $pid_file $mce_inject_data
+rm -f guest_tmp $host_start $monitor_console_output $serail_console_output $host_tmp $pid_file $mce_inject_data
 rm -f ./simple_process ./page-types
