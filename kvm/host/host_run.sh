@@ -272,7 +272,7 @@ check_guest_alive()
 	for i in 1 2 3 4 5 6 7 8 9
 	do
 	    sleep 10
-            ssh -i $host_key_priv localhost -p 5555 echo "" > /dev/null 2>&1
+            ssh -i $host_key_priv -o StrictHostKeyChecking=no localhost -p 5555 echo "" > /dev/null 2>&1
 	    if [ $? -eq 0 ]; then
 		return 0
 	    else
@@ -285,7 +285,8 @@ check_guest_alive()
 addr_translate()
 {
 	#Get Guest physical address
-        scp -i $host_key_priv -P 5555 localhost:$guest_tmp $guest_tmp > /dev/null 2>&1
+        scp -o StrictHostKeyChecking=no -i $host_key_priv -P 5555 \
+	localhost:$guest_tmp $guest_tmp > /dev/null 2>&1
 	if [ $? -ne 0 ]; then
 		echo "Failed to get Guest physical address, quit testing!"
 		kill -9 $QEMU_PID
