@@ -202,12 +202,15 @@ umount_image()
 #Guest Image Preparation
 image_prepare()
 {
+	local i
+
 	mount_image
 	if [ $? -ne 0 ]; then
 	    echo 'mount of image failed!'
 	    return 1
 	fi
-	rm -f $mnt/etc/rc3.d/S99kvm_ras
+	i=`grep id:.*:initdefault $mnt/etc/inittab |cut -d':' -f2`
+	rm -f $mnt/etc/rc${i}.d/S99kvm_ras
 	rm -f $mnt/$guest_tmp $mnt/$guest_page
 
 	if [ ! -d $mnt/root/.ssh ]; then
@@ -226,7 +229,7 @@ image_prepare()
 	sed -e "s#EARLYKILL#$early_kill#g" \
 	-e "s#GUESTRUN#$guest_script#g" $guest_init > $mnt/$kvm_ras
 	chmod a+x $mnt/$kvm_ras
-	ln -s $kvm_ras $mnt/etc/rc3.d/S99kvm_ras
+	ln -s $kvm_ras $mnt/etc/rc${i}.d/S99kvm_ras
 	sleep 2
 	umount_image
 	return 0
@@ -235,7 +238,6 @@ image_prepare()
 #Start guest system
 start_guest()
 {
-	local i
 	if [ ! -z $kernel ]; then
 	    if [ ! -z $initrd ]; then
 		if [ ! -z $root ]; then
@@ -286,6 +288,7 @@ addr_translate()
         scp -i $host_key_priv -P 5555 localhost:$guest_tmp $guest_tmp > /dev/null 2>&1
 	if [ $? -ne 0 ]; then
 		echo "Failed to get Guest physical address, quit testing!"
+		kill -9 $QEMU_PID
 		exit 0
 	fi
 	sleep 2
@@ -353,6 +356,7 @@ else
 	check_guest_klog
 	if [ $? -ne 0 ]; then
             echo 'FAIL: Did not get expected log!'
+            kill -9 $QEMU_PID
 	    exit 1
 	else
 	    echo 'PASS: Inject error into guest!'
