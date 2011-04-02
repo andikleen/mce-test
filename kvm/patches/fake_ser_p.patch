@@ -1,0 +1,47 @@
+From ae0d704daf02ef943bf9e12413ad489358879508 Mon Sep 17 00:00:00 2001
+From: Chen Gong <gong.chen@linux.intel.com>
+Date: Tue, 15 Mar 2011 10:23:56 +0800
+Subject: [PATCH] fake_ser_p
+
+this patch is only needed on the machines not supporting SRAO
+
+Signed-off-by: Chen Gong <gong.chen@linux.intel.com>
+---
+ arch/x86/kernel/cpu/mcheck/mce.c |   12 +++++++++++-
+ 1 files changed, 11 insertions(+), 1 deletions(-)
+
+diff --git a/arch/x86/kernel/cpu/mcheck/mce.c b/arch/x86/kernel/cpu/mcheck/mce.c
+index d916183..d23ea36 100644
+--- a/arch/x86/kernel/cpu/mcheck/mce.c
++++ b/arch/x86/kernel/cpu/mcheck/mce.c
+@@ -2195,7 +2195,7 @@ DEFINE_SIMPLE_ATTRIBUTE(fake_panic_fops, fake_panic_get,
+ 
+ static int __init mcheck_debugfs_init(void)
+ {
+-	struct dentry *dmce, *ffake_panic;
++	struct dentry *dmce, *ffake_panic, *ffake_ser_p;
+ 
+ 	dmce = mce_get_debugfs_dir();
+ 	if (!dmce)
+@@ -2204,8 +2204,18 @@ static int __init mcheck_debugfs_init(void)
+ 					  &fake_panic_fops);
+ 	if (!ffake_panic)
+ 		return -ENOMEM;
++	ffake_ser_p = debugfs_create_u32("fake_ser_p", 0644, dmce,
++					 (u32 *)&mce_ser);
++	if (!ffake_ser_p)
++		goto err_clean;
+ 
+ 	return 0;
++err_clean:
++	if (ffake_ser_p)
++		debugfs_remove(ffake_ser_p);
++	if (ffake_panic)
++		debugfs_remove(ffake_panic);
++	return -ENOMEM;
+ }
+ late_initcall(mcheck_debugfs_init);
+ #endif
+-- 
+1.7.3.1.120.g38a18
+
