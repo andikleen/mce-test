@@ -49,13 +49,12 @@ usage()
 	echo -e "\t\t\tBy default, host public key is $host_key_pub"
 	echo -e "\t-p privkey\t: host privite key"
 	echo -e "\t\t\tBy default, host privite key is $host_key_priv"
-	echo -e "\t-o offset\t: guest image offset"
+	echo -e "\t-o offset\t: guest image offset (optional) "
 	echo -e "\t\t\tBy default, offset is calculated by kpartx "
         echo -e "\t-l\t\t: late kill, disable early kill in guest system"
         echo -e "\t\t\tBy default, earlykill is enabled "
         echo -e "\t-m ramsize\t: virtual RAM size of guest system"
         echo -e "\t\t\tBy default, qemu-kvm defaults to 128M bytes"
-        echo -e "\t-h\t\t: show this help"
 	echo "============If you want to specify the guest kernel==========="
 	echo "============please set below options all together============="
 	echo -e "\t-k kernel\t: guest kernel"
@@ -64,14 +63,12 @@ usage()
 	exit 0
 }
 
-while getopts "i:f:d:g:o:b:p:k:n:r:hlm:" option
+while getopts ":i:f:d:g:o:b:p:k:n:r:h:lm:" option
 do
         case $option in
-		i) image=$OPTARG;;
+		i) image=$OPTARG; offset=`kpartx -l $image | awk '/loop deleted/ {next}; {offset=$NF*512}; END {print offset}'`;;
 		f) mce_inject_file=$OPTARG;;
-		d) HOST_DIR=$OPTARG
-		   host_key_pub=$HOST_DIR/id_rsa.pub
-		   host_key_priv=$HOST_DIR/id_rsa ;;
+		d) HOST_DIR=$OPTARG; host_key_pub=$HOST_DIR/id_rsa.pub; host_key_priv=$HOST_DIR/id_rsa;;
 		g) GUEST_DIR=$OPTARG;;
 		b) host_key_pub=$OPTARG;;
 		p) host_key_priv=$OPTARG;;
@@ -80,9 +77,9 @@ do
 		k) kernel=$OPTARG;;
 		n) initrd=$OPTARG;;
 		r) root=$OPTARG;;
-		m) RAM_size=$OPTARG;;
+		m) RAM_size="-m $OPTARG";;
 		h) usage;;
-		*) echo 'invalid option!'; usage;;
+		*) echo "invalid option!"; usage;;
         esac
 done
 
@@ -106,32 +103,12 @@ mce_inject_data=$HOST_DIR/mce_inject_data
 invalid()
 {
 	echo $1
-	echo "Try ./host_run.sh -h for more information."
+	echo "Try \`./host_run.sh -h\` for more information."
 	exit 0
 }
 
 check_env()
 {
-	if [ "`whoami`" != "root" ]; then
-		echo "Must run as root"
-		exit 1
-	fi
-
-	if modinfo mce_inject &> /dev/null; then
-		if ! lsmod | grep -q mce_inject; then
-			if ! modprobe mce_inject; then
-				invalid "module mce_inject isn't supported ?"
-			fi
-		fi
-	fi
-
-	which page-types &>/dev/null
-	[ ! $? -eq 0 ] && invalid "please install page-types tool!"
-	which kpartx &>/dev/null
-	[ ! $? -eq 0 ] && invalid "please install kpartx tool!"
-	which mce-inject &>/dev/null
-	[ ! $? -eq 0 ] && invalid "please install mce-inject tool!"
-
 	[ -z $image ] && invalid "please input the guest image!"
 	[ ! -e $image ] && invalid "guest image $image does not exist!"
 	[ -z $mce_inject_file ] && invalid "please input the mce data file!"
@@ -146,8 +123,6 @@ check_env()
 mount_image()
 {
 	mnt=`mktemp -d`
-	offset=`kpartx -l $image | awk '/loop deleted/ {next}; \
-	{offset=$NF*512}; END {print offset}'`
 	mount_err=`mount -oloop,offset=$offset $image $mnt 2>&1`
 	if [ $? -eq 0 ]; then
 	    fs_type=unset
@@ -163,13 +138,6 @@ mount_image()
 	    return 1
 	fi
 
-	which losetup &>/dev/null
-	[ ! $? -eq 0 ] && invalid "please install losetup tool!"
-	which pvdisplay &>/dev/null
-	[ ! $? -eq 0 ] && invalid "please install pvdisplay tool!"
-	which vgchange &>/dev/null
-	[ ! $? -eq 0 ] && invalid "please install vgchange tool!"
-
 	#Try mounting the LVM image
 	loop_dev=`losetup -o ${offset} -f --show ${image}`
 	if [ -z ${loop_dev} ]; then
@@ -181,7 +149,7 @@ mount_image()
 	lv=lv_root
 	vgchange -a ey ${vg}
 	if [ ! -b /dev/mapper/${vg}-${lv} ]; then
-	    echo '! block special'
+	    echo ! block special
 	    losetup -d ${loop_dev}
 	    rm -rf $mnt
 	    return 1
@@ -213,15 +181,15 @@ image_prepare()
 {
 	mount_image
 	if [ $? -ne 0 ]; then
-	    echo 'mount of image failed!'
+	    echo "mount of image failed!"
 	    return 1
 	fi
-	if [ ! -e $mnt/$guest_script ]; then
+	if [ ! -e $mnt$guest_script ]; then
 	    umount_image
 	    invalid "Invalid guest directory!"
 	fi
 	rm -f $mnt/etc/rc3.d/S99kvm_ras
-	rm -f $mnt/$guest_tmp $mnt/$guest_page
+	rm -f $mnt$guest_tmp $mnt$guest_page
 
 	if [ ! -d $mnt/root/.ssh ]; then
 	    mkdir $mnt/root/.ssh
@@ -229,9 +197,8 @@ image_prepare()
 	fi
 	cat $host_key_pub >> $mnt/root/.ssh/authorized_keys
         kvm_ras=/etc/init.d/kvm_ras
-	sed -e "s#EARLYKILL#$early_kill#g" \
-	-e "s#GUESTRUN#$guest_script#g" $guest_init > $mnt/$kvm_ras
-	chmod a+x $mnt/$kvm_ras
+	sed "s#EARLYKILL#$early_kill#g" $guest_init | sed "s#GUESTRUN#$guest_script#g" > $mnt$kvm_ras
+	chmod a+x $mnt$kvm_ras
 	ln -s $kvm_ras $mnt/etc/rc3.d/S99kvm_ras
 	sleep 2
 	umount_image
@@ -247,7 +214,7 @@ start_guest()
 		if [ ! -z $root ]; then
 		    append="root=$root ro loglevel=8 mce=3 console=ttyS0,115200n8 console=tty0"
 	            qemu-system-x86_64 -hda $image -kernel $kernel -initrd $initrd --append "$append" \
-		    -m $RAM_size -net nic,model=rtl8139 -net user,hostfwd=tcp::5555-:22 \
+		    $RAM_size -net nic,model=rtl8139 -net user,hostfwd=tcp::5555-:22 \
 		    -monitor pty -serial pty -pidfile $pid_file > $host_start 2>&1 &
 		    sleep 5
 		else
@@ -259,13 +226,13 @@ start_guest()
 	else
 	    echo "Start the default kernel on guest system"
 	    qemu-system-x86_64 -hda $image \
-	    -m $RAM_size -net nic,model=rtl8139 -net user,hostfwd=tcp::5555-:22 \
+	    $RAM_size -net nic,model=rtl8139 -net user,hostfwd=tcp::5555-:22 \
 	    -monitor pty -serial pty -pidfile $pid_file > $host_start 2>&1 &
 	    sleep 5
 	fi
 	monitor_console=`awk '{print $NF}' $host_start | sed -n -e '1p'`
 	serial_console=`awk '{print $NF}' $host_start | sed -n -e '2p'`
-	QEMU_PID=`cat $pid_file`
+	QUME_PID=`cat $pid_file`
 	echo "monitor console is $monitor_console"
 	echo "serial console is $serial_console"
 	echo "Waiting for guest system start up..."
@@ -300,14 +267,14 @@ addr_translate()
 	sleep 2
 
 	#Get Host virtual address
-	echo x-gpa2hva $GUEST_PHY > $monitor_console
+	echo p2v $GUEST_PHY > $monitor_console
 	cat $monitor_console > $monitor_console_output &
 	sleep 5
 	HOST_VIRT=`awk '/address/{print $NF}' $monitor_console_output |cut -b 3-11`
 	echo "Host virtual address is $HOST_VIRT"
 
 	#Get Host physical address
-	page-types -p $QEMU_PID -LN -b anon | grep $HOST_VIRT > $host_tmp
+	page-types/page-types -p $QUME_PID -LN -b anon | grep $HOST_VIRT > $host_tmp
 	sleep 5
 	ADDR=`cat $host_tmp | awk '{print "0x"$2"000"}' `
 	echo "Host physical address is $ADDR"
@@ -344,13 +311,13 @@ check_guest_klog()
 check_env
 image_prepare
 if [ $? -ne 0 ]; then
-    echo 'Mount Guest image failed, quit testing!'
+    echo "Mount Guest image failed, quit testing!"
 else
     start_guest
     get_guest_klog
     check_guest_alive
     if [ $? -ne 0 ]; then
-        echo 'Start Guest system failed, quit testing!'
+        echo "Start Guest system failed, quit testing!"
     else
 	sleep 5
         addr_translate
@@ -358,17 +325,17 @@ else
 	sleep 5
 	check_guest_klog
 	if [ $? -ne 0 ]; then
-            echo 'FAIL: Did not get expected log!'
-	    exit 1
+            echo "FAIL: Did not get expected log!"
+	    exit 0
 	else
-	    echo 'PASS: Inject error into guest!'
+	    echo "PASS: Inject error into guest!"
 	fi
 	sleep 10
 	check_guest_alive
 	if [ $? -ne 0 ]; then
-            echo 'FAIL: Guest System could have died!'
+            echo "FAIL: Guest System could have died!"
 	else
-	    echo 'PASS: Guest System alive!'
+	    echo "PASS: Guest System alive!"
 	fi
     fi
 fi
