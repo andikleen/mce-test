@@ -26,9 +26,6 @@ KVM RAS Test Suite has following dependencies on kernel and other tools:
 * Linux Kernel:
   Version 2.6.32 or newer, with MCA high level handlers enabled.
 
-* mce-inject
-  A tool to inject mce error into kernel
-
 * page-types:
   A tool to query page types, which is accompanied with Linux kernel
   source (2.6.32 or newer, $KERNEL_SRC/Documentation/vm/page-types.c).
@@ -36,77 +33,25 @@ KVM RAS Test Suite has following dependencies on kernel and other tools:
 * simple_process:
   A process constantly access the allocated memeory. (../tools/simple_process)
 
-* kpartx:
-  A tool to list partition mappings from partition tables
-
-* (optionally) losetup
-  A tool to set up and control loop devices
-
-* (optionally) pvdisplay/vgchange:
-  A tool to display/change physical volume attribute
-
-* (optionally) ssh-keygen
-  A tool to provide the authentication key generation, management and conversion
-
-Test method
----------------
-- Start a process in the guest OS, get a virtual address from guest OS
-
-- Translate this address untill we get the physical address on the host OS
-
-- Software injects an SRAO MCE at that physical address from host OS
-
-- (optionally) Write to the address from the guest, i.e attempt to
-  write to the poisoned page from the guest.
-
-the expected result:
-
-HOST system dmesg:
-
-...
-Machine check injector initialized
-Triggering MCE exception on CPU 0
-Disabling lock debugging due to kernel taint
-[Hardware Error]: Machine check events logged
-MCE exception done on CPU 0
-MCE 0x806324: Killing qemu-system-x86:8829 early due to hardware memory corruption
-MCE 0x806324: dirty LRU page recovery: Recovered
-...
-
-
-GUEST system dmesg:
-...
-[Hardware Error]: Machine check events logged
-MCE 0x75925: Killing simple_process:2273 early due to hardware memory corruption
-MCE 0x75925: dirty LRU page recovery : Recovered
-...
-
-
 Installation
 ---------------
-1. Build *host* kernel with
+1. Build host kernel with
 	CONFIG_KVM=y
 	CONFIG_KVM_INTEL=y
-	CONFIG_X86_MCE=y
-	CONFIG_X86_MCE_INTEL=y
-	CONFIG_X86_MCE_INJECT=y or CONFIG_X86_MCE_INJECT=m
-
-   and following config both on *host* and *guest*
-	CONFIG_ARCH_SUPPORTS_MEMORY_FAILURE=y
-	CONFIG_MEMORY_FAILURE=y
-
-   NOTE: if the host machine doesn't support software error recovery
-   (MCG_SER_P in IA32_MCG_CAP[24]), please apply the patch fake_ser_p.patch
-   under ./patches/
-2. Use ssh-keygen to generate public and privite keys on the host OS,
-   and copy id_rsa and id_rsa.pub from ~/.ssh/ into the testing directory
-   on the host system.
-3. compile and install qemu-kvm
-   the qemu-kvm source can be got from git://git.kernel.org/pub/scm/virt/kvm/qemu-kvm.git.
-   Before compile qemu-kvm, a patch p2v.patch should be applied. This patch
-   is located under ./patches/
-   Please ensure *SDL-devel* library is installed on the host machine, otherwise
-   only VNC can be used substituing local graphic output.
+2. Create a testing dirctory on host system and put the host test scripts
+   and test tool (page-types) into it.
+   By default, the testing directory is /test.
+3. Use ssh-keygen to generate public and privite keys, and copy them into the
+   testing directory on host system.
+4. Mount guest image
+5. Create a testing dirctory on guest system and copy guest test script and
+   tools (page-types, simple_process) into it.
+   By default, the testing directory is /test.
+6. Use qemu to start guest system, install page-types and simple_process on
+   guest system.
+     gcc -o page-types page-types.c
+     cd simple_process
+     make
 
 Start Testing
 ---------------
