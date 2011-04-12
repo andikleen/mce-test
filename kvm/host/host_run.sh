@@ -23,8 +23,10 @@
 image=""
 mce_inject_file=""
 
-HOST_DIR=`pwd`
+HOST_DIR="/test"
 GUEST_DIR="/test"
+host_key_pub="$HOST_DIR/id_rsa.pub"
+host_key_priv="$HOST_DIR/id_rsa"
 early_kill="1"
 RAM_size=""
 
@@ -40,9 +42,13 @@ usage()
 	echo -e "\t-f mcefile\t: which mce data file to inject"
 	echo "================Below are the optional options================"
 	echo -e "\t-d hostdir\t: where you put the test scripts on host system"
-	echo -e "\t\t\tBe careful to change it"
+	echo -e "\t\t\tBy default, hostdir is set to $HOST_DIR"
 	echo -e "\t-g guestdir\t: where you put the test scripts on guest system"
-	echo -e "\t\t\tBy default, guestdir is set to $GUEST_DIR"
+	echo -e "\t\t\tBy default, hostdir is set to $GUEST_DIR"
+	echo -e "\t-b pubkey\t: host public key"
+	echo -e "\t\t\tBy default, host public key is $host_key_pub"
+	echo -e "\t-p privkey\t: host privite key"
+	echo -e "\t\t\tBy default, host privite key is $host_key_priv"
 	echo -e "\t-o offset\t: guest image offset"
 	echo -e "\t\t\tBy default, offset is calculated by kpartx "
         echo -e "\t-l\t\t: late kill, disable early kill in guest system"
@@ -63,8 +69,12 @@ do
         case $option in
 		i) image=$OPTARG;;
 		f) mce_inject_file=$OPTARG;;
-		d) HOST_DIR=$OPTARG;;
+		d) HOST_DIR=$OPTARG
+		   host_key_pub=$HOST_DIR/id_rsa.pub
+		   host_key_priv=$HOST_DIR/id_rsa ;;
 		g) GUEST_DIR=$OPTARG;;
+		b) host_key_pub=$OPTARG;;
+		p) host_key_priv=$OPTARG;;
 		o) offset=$OPTARG;;
 		l) early_kill="0";;
 		k) kernel=$OPTARG;;
@@ -82,17 +92,15 @@ guest_tmp=$GUEST_DIR/guest_tmp
 guest_page=$GUEST_DIR/guest_page
 GUEST_PHY=""
 
-host_key_pub=$HOST_DIR/id_rsa.pub
-host_key_priv=$HOST_DIR/id_rsa
 guest_init=$HOST_DIR/guest_init
 host_start=$HOST_DIR/host_start
 pid_file=$HOST_DIR/pid_file
+monitor_console=""
+serial_console=""
 monitor_console_output=$HOST_DIR/monitor_console_output
 serial_console_output=$HOST_DIR/serial_console_output
 host_tmp=$HOST_DIR/host_tmp
 mce_inject_data=$HOST_DIR/mce_inject_data
-monitor_console=""
-serial_console=""
 
 
 invalid()
@@ -117,6 +125,8 @@ check_env()
 		fi
 	fi
 
+	which page-types &>/dev/null
+	[ ! $? -eq 0 ] && invalid "please install page-types tool!"
 	which kpartx &>/dev/null
 	[ ! $? -eq 0 ] && invalid "please install kpartx tool!"
 	which mce-inject &>/dev/null
@@ -206,6 +216,10 @@ image_prepare()
 	    echo 'mount of image failed!'
 	    return 1
 	fi
+	if [ ! -e $mnt/$guest_script ]; then
+	    umount_image
+	    invalid "Invalid guest directory!"
+	fi
 	rm -f $mnt/etc/rc3.d/S99kvm_ras
 	rm -f $mnt/$guest_tmp $mnt/$guest_page
 
@@ -213,13 +227,6 @@ image_prepare()
 	    mkdir $mnt/root/.ssh
 	    chmod 700 $mnt/root/.ssh
 	fi
-	mkdir -p $GUEST_DIR
-	cp ../guest/guest_run.sh $GUEST_DIR
-	gcc -o simple_process ../../tools/simple_process/simple_process.c
-	gcc -o page-types ../../tools/page-types.c
-	cp simple_process $GUEST_DIR
-	cp page-types $GUEST_DIR
-	sed -e "s#GUEST_DIR#$GUEST_DIR#g" $guest_script
 	cat $host_key_pub >> $mnt/root/.ssh/authorized_keys
         kvm_ras=/etc/init.d/kvm_ras
 	sed -e "s#EARLYKILL#$early_kill#g" \
@@ -300,7 +307,7 @@ addr_translate()
 	echo "Host virtual address is $HOST_VIRT"
 
 	#Get Host physical address
-	./page-types -p $QEMU_PID -LN -b anon | grep $HOST_VIRT > $host_tmp
+	page-types -p $QEMU_PID -LN -b anon | grep $HOST_VIRT > $host_tmp
 	sleep 5
 	ADDR=`cat $host_tmp | awk '{print "0x"$2"000"}' `
 	echo "Host physical address is $ADDR"
@@ -367,4 +374,3 @@ else
 fi
 
 rm -f $host_start $monitor_console_output $serail_console_output $host_tmp $pid_file $mce_inject_data
-rm -f ./simple_process ./page-types

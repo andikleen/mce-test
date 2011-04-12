@@ -20,16 +20,17 @@
 # Author: Jiajia Zheng <jiajia.zheng@intel.com>
 #
 
+GUEST_DIR=`dirname $0`
+guest_page=$GUEST_DIR/guest_page
+guest_tmp=$GUEST_DIR/guest_tmp
+
 killall simple_process
+$GUEST_DIR/simple_process/simple_process > /dev/null &
 
-cd GUEST_DIR
-
-./simple_process > /dev/null &
-
-./page-types -p `pidof simple_process` -LN -b anon > guest_page
-if [ -s guest_page ]; then
-	ADDR_KLOG=`awk '$2 != "offset" {print "0x"$2}' guest_page | sed -n -e '1p'`
+$GUEST_DIR/page-types/page-types -p `pidof simple_process` -LN -b anon > $guest_page
+if [ -s $guest_page ]; then
+	ADDR_KLOG=`awk '$2 != "offset" {print "0x"$2}' $guest_page | sed -n -e '1p'`
 	ADDR=`echo $ADDR_KLOG"000"`
-	echo "guest physical address is $ADDR" > guest_tmp
+	echo "guest physical address is $ADDR" > $guest_tmp
 fi
 
