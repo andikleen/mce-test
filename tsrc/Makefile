@@ -5,7 +5,7 @@ CFLAGS += -I ${LSRC}/arch/x86/kernel/cpu/mcheck/ -g -Wall
 
 KFLAGS := -I ./kinclude
 
-EXE := tinjpage tsimpleinj tkillpoison tprctl tsoft tsoftinj thugetlb
+EXE := tinjpage tsimpleinj tkillpoison tprctl tsoft tsoftinj thugetlb erst-inject
 EXE += ttranshuge
 EXEKERNEL := tring ttable
 
@@ -34,6 +34,8 @@ tring : LDFLAGS += -lpthread
 
 x.html: ttable
 	./ttable ${TFLAGS} > x.html
+
+include erst-inj/erst-inj.mk
 
 .PHONY: see
 
@@ -69,5 +71,5 @@ soft: standalone
 test-kernel: tcases
 	./tcases
 
-
-
+test-erst: erst-inject
+	./erst-inject.sh
