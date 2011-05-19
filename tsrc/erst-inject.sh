@@ -45,7 +45,7 @@
 
 
 ID=0xdeadbeaf
-ERST=./erst-inj/erst-inject
+ERST=./erst-inject
 LOG=./erst.log
 MODSTATUS=0
 

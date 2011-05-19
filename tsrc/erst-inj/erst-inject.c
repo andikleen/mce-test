@@ -179,6 +179,7 @@ enum {
        ERST_POLL,
        ERST_CLEAR,
        ERST_COUNT,
+       ERST_MAX = 255
 };
 
 void usage()
@@ -198,7 +199,7 @@ void usage()
 int main(int argc, char *argv[])
 {
        int fd;
-       int todo = ERST_COUNT;
+       int todo = ERST_MAX;
        int opt;
        u64 record_id = 0x12345678;
        u32 record_count;
@@ -242,6 +243,9 @@ int main(int argc, char *argv[])
                break;
        case ERST_COUNT:
                get_record_count(fd, &record_count);
+               break;
+       case ERST_MAX:
+               usage();
                break;
        }
 
