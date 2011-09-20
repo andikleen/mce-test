@@ -37,7 +37,7 @@ verify()
 {
     local removes="TSC TIME PROCESSOR"
     case "$bcase" in
-	srao_*)
+	srao_*|srar_*)
 	    soft_inject_verify_mcelog
 	    verify_klog $klog
 	    soft_inject_verify_return_val

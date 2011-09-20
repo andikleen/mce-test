@@ -136,3 +136,57 @@ overall: (7 cases)
   * No warning or bug during kernel processing.
   * Exception message is "Action optional with unknown MCACOD"
 
+8.srar_usr_dcu
+- Objective:
+  * Test logic of uncorrected with S & AR
+- Code path tested:
+  * do_machine_check()
+  * mce_start()
+  * mce_timeout() except if (*t <= 0) branch
+  * mce_severity()
+  * mce_get_rip()
+  * mce_log()
+  * mce_end()
+  * mce_reign()
+- Reference:
+  * Inject data file: cases/soft-inj/recoverable_uc/data/srar_usr_dcu
+- Expected result:
+  * No warning or bug during kernel processing.
+  * Exception message is "Data CACHE Level-0 Data-Read Error"
+
+9.srar_usr_dcu_nmi
+- Objective:
+  * Test logic of uncorrected with S & AR
+- Code path tested:
+  * do_machine_check()
+  * mce_start()
+  * mce_timeout() except if (*t <= 0) branch
+  * mce_severity()
+  * mce_get_rip()
+  * mce_log()
+  * mce_end()
+  * mce_reign()
+- Reference:
+  * Inject data file: cases/soft-inj/recoverable_uc/data/srar_usr_dcu_nmi
+- Expected result:
+  * No warning or bug during kernel processing.
+  * Exception message is "Data CACHE Level-0 Data-Read Error"
+
+10.srar_dcu_irq
+- Objective:
+  * Test logic of uncorrected with S & AR
+- Code path tested:
+  * do_machine_check()
+  * mce_start()
+  * mce_timeout() except if (*t <= 0) branch
+  * mce_severity()
+  * mce_get_rip()
+  * mce_log()
+  * mce_end()
+  * mce_reign()
+- Reference:
+  * Inject data file: cases/soft-inj/recoverable_uc/data/srar_dcu_irq
+- Expected result:
+  * No warning or bug during kernel processing.
+  * Exception message is "Data CACHE Level-0 Data-Read Error"
+
