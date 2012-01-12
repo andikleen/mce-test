@@ -2,10 +2,14 @@ MCE test suite
 ---------------
 
 The MCE test suite is a collection of tools and test scripts for
-testing the Linux kernel MCE processing features. The goal is to cover
-most Linux kernel MCE processing code paths and features with
-automation tests.
+testing the Linux kernel machine check error recovery 
+features. This is the code that deals with recovery from memory 
+bit errors and other hardware problems.
 
+For some more details on machine checks see http://www.mcelog.org
+
+The goal is to cover most Linux kernel MCE processing code paths 
+and features with automation tests.
 
 In the Package
 --------------
