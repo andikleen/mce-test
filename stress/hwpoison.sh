@@ -273,7 +273,7 @@ check_env()
 		#if einj is a module, it is ensured to have been loaded
 		modinfo einj > /dev/null 2>&1
 		if [ $? -eq 0 ]; then
-			[ -d $g_debugfs/apei/einj ] || modprobe einj
+			[ -d $g_debugfs/apei/einj ] || modprobe einj param_extension=1
 			[ $? -eq 0 ] || invalid "module apei_inj isn't supported ?"
 		fi
 	fi
