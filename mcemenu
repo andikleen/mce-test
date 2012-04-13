@@ -1,0 +1,405 @@
+#!/bin/sh
+################################################################################
+##                                                                            ##
+## This program is free software;  you can redistribute it and#or modify      ##
+## it under the terms of the GNU General Public License as published by       ##
+## the Free Software Foundation; either version 2 of the License, or          ##
+## (at your option) any later version.                                        ##
+##                                                                            ##
+## This program is distributed in the hope that it will be useful, but        ##
+## WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY ##
+## or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License   ##
+## for more details.                                                          ##
+##                                                                            ##
+## You should have received a copy of the GNU General Public License          ##
+## along with this program;  if not, write to the Free Software               ##
+## Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA    ##
+##                                                                            ##
+################################################################################
+
+#
+# File:        runmcetest
+#
+# Description: This program is a Graphical User Interface (GUI) 
+#              Control Centre for MCE Test Suite. The Control Centre provides 
+#              functionality to Compile, Execute and View Results of
+#              MCE Test Cases.
+#              
+# Author:      Gong Chen <gong.chen@linux.intel.com>
+# 
+# These codes are heavily reused from ltpmenu.
+# Thanks very much for Manoj Iyer <manjo@mail.utexas.edu>
+#
+
+# Global variables.
+TOOL_DIR=./bin
+TMP_DIR=./work
+LOG_DIR=./results
+SUM_DIR=./summary
+SCENARIO_DIR=./groups
+
+SUM_FILE=""
+LOG_FILE=""
+TOTAL_COUNT=0
+PASS_COUNT=0
+FAIL_COUNT=0
+RUNALL_TIMES=1
+
+#Dialog Resource definition
+BACKTITLE="Linux MCE Test Suite Control Center"
+
+#main menu window resources
+TITLE_MAIN="Main Menu"
+MENU_MAIN="Move using[UP] [DOWN], Select using [ENTER]"
+ABOUT_MAIN="About MCE Test Suite"
+COMPILE_MAIN="Compile Whole Test Suite"
+DETAIL_MAIN="Details of Scenario Files"
+EXECUTE_MAIN="Execute Selected Test Cases"
+RESULTS_MAIN="Display a Summary of Test Results"
+GOODBYE_TITLE="Good Bye!"
+GOODBYE_MSG="Thank you for using Linux MCE Test Suite"
+
+#about window resources
+ABOUT_TITLE="About MCE Test Suite"
+ABOUT_MSG="The MCE Test Suite can be used to to compile, \
+install and execute all kinds of Linux MCE Tests. "
+
+#compile window resources
+COMPILE_TITLE="Compiling LTP testsuite"
+COMPILE_YESNO="This will compile all the test cases in \
+MCE Test Suite and place the executables \
+in corresponding directory. Do \
+you wish to continue ??" 
+COMPILE_TILE="Compiling MCE Test Suite"
+COMPILE_MSG="ERROR: command \$cmd not found, \$cmd is \
+required to compile MCE Test Suite. Please \
+install \$cmd or export PATH correctly before \
+running this program"
+COMPLIE_ERROR_1="ERROR in \'make clean\' - exiting."
+COMPLIE_ERROR_2="ERROR in \'make all\' - exiting."
+COMPLIE_ERROR_3="ERROR in \'make install\' - exiting."
+
+#result window resources
+RESULT_TITLE="MCE Test Results"
+RESULT_MENU="Move using[UP] [DOWN], Select using [ENTER]\n\n
+To get more detail information during the test procedure \
+please check directory $LOG_DIR.\n"
+NOFILE_MSG="ERROR: No files to view in $SUM_DIR directory."
+
+#scenario/group window resources
+SCE_TITILE="MCE Test Scenario Files"
+CHECKLIST_MAIN="Move using[UP] [DOWN], Select using [SPACE]"
+
+#execute window resources
+EXE_TITILE="Executing MCE testcases"
+EXE_MSG1="The testcases must to be compiled in order \
+to execute them. Returning to main menu. \
+Please select the Compile option." 
+EXE_MSG2="At least one test case should be choosed. \
+Please return to *Scenario* menu to select \
+at least one test case." 
+
+#flag prompt window resources
+PROMPT_TITLE="Test Duration - Times Specification"
+PROMPT_MSG1="Would you like to specify test duration? \
+Default is the length of one loop."
+PROMPT_MSG2="Please enter the duration numbers to run. \
+0 menas infinite loop."
+
+# Function:    cleanup
+#
+# Description: Remove all temporary files created by this program. Cleanup 
+#              always called on program exit.
+cleanup()
+{
+    rm -rf $TMP_DIR/*
+}
+
+
+# Function:    display_info_msg 
+#
+# Description: Displays informational messages window. This window may
+#              may be used to display information like errors, instructions
+#              etc to the user. The window is dismissed when the user hits
+#              the [ENTER] key.
+display_info_msg()
+{
+	dialog --backtitle "$BACKTITLE" \
+		--title " $1 " \
+		--msgbox " $2 " 10 70 
+	return $?
+}
+
+
+# Function:    compile_rastest
+#
+# Description: Checks for commands that are pre-reqs for compiling and 
+#              installing MCE Test Suite. It displays a confirmation window
+#              in order to confirm the choice made by the user.
+compile_rastest()
+{
+	dialog --backtitle "$BACKTITLE" \
+	--title "$COMPILE_TITLE" \
+	--yesno "$COMPILE_YESNO" 7 70 || RC=$?
+	case $RC in
+		0) for cmd in cc make; do
+			which $cmd &> /dev/null
+			if [ $? -ne 0 ]; then
+				msg=`eval echo $COMPILE_MSG`
+				display_info_msg "$COMPILE_TILE" "$msg"
+				return
+			fi
+		done
+		make clean
+		if [ $? -ne 0 ]; then
+			echo $COMPLIE_ERROR_1
+			exit
+		fi 
+		make
+		if [ $? -ne 0 ]; then
+			echo $COMPLIE_ERROR_2
+			exit
+		fi 
+		make install
+		if [ $? -ne 0 ]; then
+			echo $COMPLIE_ERROR_3
+			exit
+		fi 
+		return ;;
+
+		1|255)  return ;;
+	esac
+}
+
+
+# Function:    disp_result
+#
+# Description: The summary generated after the execution located under
+#              $SUM_DIR/ directory in a text (ASCII) file called 
+#              todaysdate.time.log. This function displays this file in a
+#              window. If the results file does not exist it displays an 
+#              info message window notifing the user that MCE test cases
+#              need to be executed in order to view results.
+disp_result()
+{
+	RC=0
+	local RESULTS_LIST=$(for i in `ls -1 -A -I ".git*" -B $SUM_DIR`;\
+			do echo -n "$i [more...] "; done)
+	if ! [ -z $RESULTS_LIST ] ;then
+		while [ $RC -ne "1" ] 
+		do
+			dialog --clear
+			dialog --backtitle "$BACKTITLE" \
+			--title "$RESULT_TITLE" \
+			--menu "$RESULT_MENU" 15 70 8 \
+			$RESULTS_LIST \
+			2>$TMP_DIR/rastest.results.$$ || RC=$?
+			results_item=$(cat $TMP_DIR/rastest.results.$$)
+			if ! [ -z $results_item ];then
+				dialog --clear
+				dialog --backtitle "$BACKTITLE" \
+				--title "$RESULT_TITLE" \
+				--textbox $SUM_DIR/$results_item 17 70
+			fi
+		done
+	else
+		dialog --clear
+		dialog --backtitle "$BACKTITLE" \
+		--title "$RESULT_TITLE" \
+		--msgbox "$NOFILE_MSG" 5 53 
+	fi
+}
+
+
+# Function:    flags_prompt
+#
+# Description: Prompt for and record user options for run duration
+flags_prompt()
+{
+	local RC=0
+
+	RUNALL_TIMES=1
+
+	dialog --clear
+	dialog --backtitle "$BACKTITLE" \
+	--title "$PROMPT_TITLE" --clear\
+	--yesno "$PROMPT_MSG1" 7 80
+	RC=$?
+	if [ $RC -eq "0" ]
+	then
+		dialog --backtitle "$BACKTITLE" \
+		--title "$PROMPT_TITLE" --clear\
+		--inputbox "$PROMPT_MSG2" 7 80 \
+		2>$TMP_DIR/rastest.length.$$ ;
+		RUNALL_TIMES=$(cat $TMP_DIR/rastest.length.$$ | awk '{print $1}')
+	fi
+}
+
+# Function:    execute_test
+#
+# Description: This function provides a menu of testcases that can be
+#              selected for execution.
+#              The function checks to see if the file $TOOL_DIR/page-types
+#              was created, this file is created when the whole test suite
+#              is compiled and installed, if it is not found
+#              an info message window will notify the user that it needs to
+#              be compiled before tests can be executed.
+#              This function creates the testcase list based on the users
+#              choice of scenario groups and execute these tests.
+execute_test()
+{
+	local RC=0
+	local DATE_START=""
+	local DATE_END=""
+	local size=0
+	local TST_CHOICE=$TMP_DIR/rastest.choice.$$
+	local CASELIST=$TMP_DIR/rastest.caselist.$$
+
+	if ! [ -f $TOOL_DIR/page-types ]
+	then
+		display_info_msg "$EXE_TITILE" \
+		"$EXE_MSG1"
+		return
+	fi
+
+	touch $TST_CHOICE
+	cat $SCENARIO_DIR/* > $TST_CHOICE
+	awk '{if ($3 == "on") {print $1" "$2}}' $TST_CHOICE > $CASELIST
+
+	size=`wc -m $CASELIST | awk '{print $1}'`
+	if [ $size -eq 0 ];then
+		RC=1
+	fi
+
+	case $RC in 
+		0)
+		flags_prompt
+		dialog --clear
+
+		./runmcetest -t $TMP_DIR -s $SUM_DIR -o $LOG_DIR -b $TOOL_DIR\
+			-l $CASELIST -r $RUNALL_TIMES
+
+		return ;;
+		1|255)
+		display_info_msg "$EXE_TITILE" \
+				"$EXE_MSG2"
+		return ;;
+	esac
+}
+
+
+# Function:    about_rastest
+#
+# Description: This function displays a window containing a brief message
+#              describing this programs functionality.
+about_rastest()
+{
+    display_info_msg "$ABOUT_TITLE" "$ABOUT_MSG"
+}
+
+
+# Function:    ras_scenarios
+#
+# Description: This function displays a list of scenario files located 
+#              in scenario directory.  Users can list the contents of
+#              each file and do some adjustment
+#
+ras_scenarios()
+{
+	RC=0
+	local RETVAL=0
+	local TMPMODE=""
+	local TMPSEL=$TMP_DIR/rastest.groupcases.$$
+	local SCENARIOS=$(for i in `ls -1 -A -I ".git*" -B $SCENARIO_DIR`;
+				do echo -n "$i [more...] "; done; )
+
+	while [ $RC -ne "1" ] 
+	do
+		dialog --clear
+		dialog --cancel-label QUIT --backtitle "$BACKTITLE" \
+		--title "$SCE_TITILE" \
+		--menu "$MENU_MAIN" 15 70 8 \
+		$SCENARIOS \
+		2>$TMP_DIR/rastest.scenario.$$ || RC=$?
+		scenario=$(cat $TMP_DIR/rastest.scenario.$$)
+		if ! [ -z $scenario ];then
+			#ignore comment line in group file
+			scenario_item=`grep -v "^#" $SCENARIO_DIR/$scenario`
+			dialog --clear
+			dialog --separate-output --backtitle "$BACKTITLE" \
+			--title "$SCE_TITILE" \
+			--checklist "$CHECKLIST_MAIN" 20 60 14 \
+				$scenario_item 2> $TMPSEL
+
+			RETVAL=$?
+			if [ $RETVAL -eq 0 ]; then
+				# convert original mode to another style
+				# e.g.
+				# item1
+				# item2
+				# item3
+				# =========== convert ===========
+				# item1\|item2\|item3
+				TMPMODE=$(cat $TMPSEL | while read line
+					do
+						echo -n \\\|$line
+					done)
+				#remove the first prefix "\|"
+				TMPMODE=${TMPMODE:2}
+				sed -i -e "s/\(.*\)on/\1off/g" $SCENARIO_DIR/$scenario
+				if [ X${TMPMODE} != X ]; then
+				sed -i -e "s/\(\(${TMPMODE}\).*\)off/\1on/g" \
+					$SCENARIO_DIR/$scenario
+				fi
+			fi
+		fi
+
+	done
+}
+
+
+                 
+# Function:    main
+#
+# Description: Displays the main menu to the MCE Test Suite. The menu
+#              provides options to Compile, Execute, and View test execution
+#              results.
+
+# test for dialog program exist
+if [ ! -x /usr/bin/dialog ]; then
+       echo "Sorry, MCE Test Suite GUI not available, can't find dialog. Exiting...";
+       exit 1;
+fi
+
+# call cleanup function on program exit.
+trap "cleanup" 0
+
+# wait in a loop until user hits [Cancel] button on the main menu.
+while :
+do
+	RC=0
+	dialog --clear
+	dialog --cancel-label QUIT --backtitle "$BACKTITLE" \
+	--title "$TITLE_MAIN" \
+	--menu "$MENU_MAIN" 15 70 5 \
+		About		"$ABOUT_MAIN" \
+		Compile		"$COMPILE_MAIN" \
+		Scenario	"$DETAIL_MAIN" \
+		Execute		"$EXECUTE_MAIN" \
+		Results		"$RESULTS_MAIN" \
+	2>$TMP_DIR/rastest.mainmenu.$$ || RC=$?
+
+	case $RC in 
+		0) mmenu_item=`cat $TMP_DIR/rastest.mainmenu.$$`
+			case $mmenu_item in
+				About)		about_rastest;;
+				Compile)	compile_rastest;;
+				Scenario)	ras_scenarios;;
+				Execute)	execute_test;;
+				Results)	disp_result;;
+			esac ;;
+
+		1|255) display_info_msg "$GOODBYE_TITLE" "$GOODBYE_MSG"
+		exit ;;
+	esac
+done

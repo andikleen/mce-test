@@ -1,0 +1,2 @@
+STRESS-HWPOISON-SOFT cases/stress/hwpoison/run_soft.sh on
+STRESS-HWPOISON-HARD cases/stress/hwpoison/run_hard.sh on

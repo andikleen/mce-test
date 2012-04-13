@@ -1,13 +1,9 @@
 CFLAGS := -g -Wall
 
-all: simple_process
-
-install:
-	cp simple_process ../../bin
-
 simple_process: simple_process.o
 
-simple_process.o: simple_process.c
+install: simple_process
+	cp -f simple_process ../../bin
 
 clean:
 	rm -f simple_process *.o

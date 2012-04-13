@@ -1,0 +1,10 @@
+APEI-INJ cases/function/apei-inj/runtest.sh on
+ERST-INJ cases/function/erst-inject/runtest.sh on
+#PFA test depends on correct BIOS/mcelog setting
+PFA cases/function/pfa/runtest.sh on
+#HWpoison
+HWPOISON-SOFT cases/function/hwpoison/run_soft.sh on
+HWPOISON-HARD cases/function/hwpoison/run_hard.sh on
+HWPOISON-HUGEPAGE cases/function/hwpoison/run_hugepage.sh on
+HWPOISON-THP cases/function/hwpoison/run_thp.sh on
+#KVM

@@ -2,14 +2,16 @@ MCE test suite
 ---------------
 
 The MCE test suite is a collection of tools and test scripts for
-testing the Linux kernel machine check error recovery 
-features. This is the code that deals with recovery from memory 
-bit errors and other hardware problems.
+testing the Linux RAS related features, including CPU/Memory error
+containment and recovery, ACPI/APEI support etc.
 
 For some more details on machine checks see http://www.mcelog.org
 
-The goal is to cover most Linux kernel MCE processing code paths 
-and features with automation tests.
+The goal is as follows:
+1. cover most Linux kernel MCE processing code paths and features
+2. cover functional test cases for all RAS related features
+3. provide stress test cases for some RAS features, especially for
+   memory part
 
 In the Package
 --------------
@@ -25,13 +27,9 @@ COPYING
 Makefile
 	Top level make file for MCE test suite
 
-drivers/*
-	Contains test drivers, which drive test procedure and do some
-	common works for test drivers. There is one directory for each
-	test driver, the user interface of a driver is the driver.sh
-	in corresponding directory, such as:
-	    drivers/kdump/driver.sh
-	is user interface of kdump test driver.
+bin/
+	Some tools used by test drivers or test cases will be
+	installed into this directory.
 
 cases/*
 	Contains all test cases, which may be organized in
@@ -43,14 +41,9 @@ cases/*
 	   -- cases/apei-inj/ucr/cases.sh  
 		is for test cases triggered by apei-inject.
 
-config/*
-	Contains test configuration files, which specifies the
-	parameters for test driver, which test cases are used in test,
-	the parameters for test cases, etc.
-
-tsrc/*
-	Some standalone test programs for various parts of the machine
-	check code.
+doc/*
+	Documentation for MCE test suites include howto and
+	descriptions of every test case.
 
 lib/*
 	Contains some shell scripts, in which some common shell
@@ -60,34 +53,19 @@ lib/*
 tools/*
 	Some tools used by MCE test suites.
 
-doc/*
-	Documentation for MCE test suites include howto and
-	descriptions of every test case.
+work/
+	During test, some temporary file will be put in work directory.
+
+groups/
+	Where all scenarios files such as coverage/function/stress are placed
 
 results/
-	When test is done, the test result will be placed in this
-	directory, test results for a specific test driver will be
-	placed in corresponding directory, such as test results of
-	kdump test driver will be placed in "results/kdump". General
-	test result is in results/$driver/result; additional results
-	of various cases may be in corresponding directory, for
-	example, files in
-	    results/kdump/soft-inj/panic/fatal/
-	is for additional result for test case soft-inj/panic/fatal.
+	When test is done, the test log will be placed in this directory.
+	Some test results such as coverage test result will be
+	placed in sub-directory under results directory.
 
-work/
-	During test, some temporary file will be put in work
-	directory, temporary files for a specific test driver will be
-	placed in corresponding directory, such as temporary files of
-	kdump test driver will be placed in "work/kdump". Test log is
-	in work/$driver/log.
-
-bin/
-	Some tools used by test drivers or test cases will be
-	installed into this directory.
-
-stress/
-	Linux MCE stress test suite.
+summary
+	When test is done, a summary file in *date* format is placed here.
 
 Test Instruction
 ----------------
@@ -95,10 +73,10 @@ Test Instruction
 Please refer to corresponding section in doc/howto.txt.
 
 Very quick way to test this:
-	be root
-	make sure you have a kernel with CONFIG_X86_MCE_INJECT
+	1. be root
+	2. make sure you have a kernel with CONFIG_X86_MCE_INJECT
 	and CONFIG_HWPOISON_INJECT and soft-offlining support
-	run "make test"
+	3. run "mcemenu"
 
 Futher Information
 ------------------

@@ -1,0 +1,267 @@
+#!/bin/sh
+################################################################################
+##                                                                            ##
+## This program is free software;  you can redistribute it and#or modify      ##
+## it under the terms of the GNU General Public License as published by       ##
+## the Free Software Foundation; either version 2 of the License, or          ##
+## (at your option) any later version.                                        ##
+##                                                                            ##
+## This program is distributed in the hope that it will be useful, but        ##
+## WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY ##
+## or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License   ##
+## for more details.                                                          ##
+##                                                                            ##
+## You should have received a copy of the GNU General Public License          ##
+## along with this program;  if not, write to the Free Software               ##
+## Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA    ##
+##                                                                            ##
+################################################################################
+
+#
+# File:        runmcetest
+#
+# Description: This program is the core executer for MCE Test Suite.
+#              
+# Author:      Chen Gong <gong.chen@linux.intel.com>
+# 
+
+#set -x
+
+TMP_DIR=""
+SUM_DIR=""
+LOG_DIR=""
+TOOL_DIR=""
+CASELIST=""
+SUM_FILE=""
+LOG_FILE=""
+TOTAL_COUNT=0
+PASS_SIGN="PASS"
+FAIL_SIGN="FAIL"
+RUNALL_TIMES=""
+
+EXE_MSG="The testcases must to be compiled and installed in order \
+to execute them."
+NOFILE_MSG="Some file or directory doesn't exist or assigned, \
+please check and run again."
+NOCASE_MSG="The case list file is not valid, please check \
+and run again."
+ROUND_MSG="The running time is not a valid value, please make
+use of a nonnegtive integer and run again."
+
+# Function:    cleanup
+#
+# Description: Remove all temporary files created by this program. Cleanup 
+#              always called on program exit.
+cleanup()
+{
+	if ! [ "X${TMP_DIR}" == "X" ]
+	then
+		rm -rf $TMP_DIR/*
+	fi
+}
+
+# Function:    run_test
+# 
+# Description: Execute actual tests and print messages by test cases.
+run_test()
+{
+	local IFSBACK=$IFS
+
+	# some test cases maybe meet issues when using WHILE-LOOP
+	# because of input redirection, instead of using FOR-LOOP
+	IFS=$'\n'
+	for caseid in `cat $1`
+	do
+		if [ ${caseid:0:1} != "#" ]
+		then
+			case_name=`echo $caseid | cut -d' ' -f1`
+			case_script=`echo $caseid | cut -d' ' -f2`
+			case_output=$TMP_DIR/rastest.caseoutput.$$
+
+			cat <<-EOF | tee -a $LOG_FILE
+			<<<<<<<<<<<<<<<<<<<    TEST BEGIN    >>>>>>>>>>>>>>>>>>>
+			Case ID: $case_name"
+			--------------------------------------------------------
+			EOF
+
+			# because pipe is used here, it is impossible to count
+			# PASS/FAIL internally
+			if ./$case_script
+			then
+				printf "%-36s%-10s\n" $case_name $PASS_SIGN >> $SUM_FILE
+			else
+				printf "%-36s%-10s\n" $case_name $FAIL_SIGN >> $SUM_FILE
+			fi | tee -a $LOG_FILE
+			TOTAL_COUNT=`expr $TOTAL_COUNT + 1`
+
+			cat <<-EOF | tee -a $LOG_FILE
+			--------------------------------------------------------
+			<<<<<<<<<<<<<<<<<<<<    TEST END    >>>>>>>>>>>>>>>>>>>>
+
+			EOF
+		fi
+	done
+	IFS=$IFSBACK
+
+	sleep 2
+}
+
+
+# Function:    execute_test
+#
+# Description: This function provides a menu of testcases that can be
+#              selected for execution.
+#              The function checks to see if the file $TOOL_DIR/page-types
+#              was created, this file is created when the whole test suite
+#              is compiled and installed, if it is not found
+#              an info message window will notify the user that it needs to
+#              be compiled before tests can be executed.
+#              This function creates the testcase list based on the users
+#              choice of scenario groups and execute these tests.
+execute_test()
+{
+	local DATE_START=""
+	local DATE_END=""
+
+	if ! [ -f $TOOL_DIR/page-types ] 
+	then 
+		echo $EXE_MSG
+		return
+	fi 
+
+	DATE_START=`date +%Y-%m-%d.%H.%M.%S`
+	SUM_FILE=$SUM_DIR/$DATE_START.log
+	LOG_FILE=$LOG_DIR/$DATE_START.output
+	TOTAL_COUNT=0
+
+	cat > $SUM_FILE <<-EOF
+	Test Start Time: $DATE_START
+	----------------------------------------------
+	testcase                            result
+	-------------------                 ----------
+	EOF
+
+	if [ $RUNALL_TIMES -eq 0 ]; then
+		while :
+		do
+			run_test $CASELIST
+		done
+	else
+		inc=0
+		while [ $inc -lt $RUNALL_TIMES ]
+		do
+			inc=`expr $inc + 1`
+			run_test $CASELIST
+		done
+	fi
+
+	DATE_END=`date +%Y-%m-%d.%H.%M.%S`
+	cat >> $SUM_FILE <<-EOF
+	----------------------------------------------
+	Test End Time: $DATE_END
+	Total Tests: $TOTAL_COUNT
+	Total Passes: `grep -c $PASS_SIGN $SUM_FILE`
+	Total Failures: `grep -c $FAIL_SIGN $SUM_FILE`
+	Kernel Version: `uname -r`
+	Machine Architecture: `uname -m`
+	EOF
+}
+
+usage()
+{
+	cat <<-EOF
+
+	usage: ${0##*/} [ -t TMPDIR ] [ -s SUMFILE ] [ -o OUTDIR ]
+	[ -b TOODIR ] [ -l CASEFILE ] [ -r RUNTIMES ]
+
+	-t TMPDIR       Directory where temporary files will be created.
+	-s SUMDIR       Directory where summary files will be created.
+	-o OUTDIR       Directory where raw test outputs will be created.
+	-b TOODIR	Directory where tool utilities will be placed.
+	-l CASEFILE     File where test case list will be used in the test.
+	-r RUNTIMES	Assign the whole test rounds. 0 means infinite loop.
+	-h              Help. Prints all available options.
+
+	example: ${0##*/} -t ./work/ -s ./summary -o ./results -b ./bin -l ./work/caselist -r 1
+
+
+	EOF
+
+	exit 0
+}
+
+main()
+{
+	if [ "$UID" -ne 0 ]; then
+		echo "Sorry, Must be root to run MCE Test Suite. Exiting..."
+		exit 1;
+	fi
+
+	[ $# -eq 0 ] && usage
+
+	for cmd in mcelog mce-inject; do
+		which $cmd &> /dev/null
+		[ $? -ne 0 ] &&
+		{
+			echo "Sorry, Please install $cmd first. Exiting..."
+			exit 1
+		}
+	done
+
+	while getopts t:s:o:b:l:r:h arg; do
+		case $arg in
+			t) TMP_DIR=$OPTARG ;;
+			s) SUM_DIR=$OPTARG ;;
+			o) LOG_DIR=$OPTARG ;;
+			b) TOOL_DIR=$OPTARG ;;
+			l) CASELIST=$OPTARG ;;
+			r) RUNALL_TIMES=$OPTARG ;;
+			h|\?) usage;;
+		esac
+	done
+
+	if ! [ -d "$TMP_DIR" -a -d "$SUM_DIR" -a -d "$LOG_DIR" \
+		-a -d "$TOOL_DIR" -a -e "$CASELIST" ]
+	then
+		echo $NOFILE_MSG
+		exit 2
+	fi
+
+	size=`wc -m $CASELIST | awk '{print $1}'`
+	if [ $size -eq 0 ]
+	then
+		echo $NOCASE_MSG
+		exit 3
+	fi
+
+	#when RUNALL_TIMES is NULL/string/negtive integer, exit...
+	test=`echo $RUNALL_TIMES | sed -n "/^[0-9]\+$/p"`
+	[ X"$test" = X ] &&
+	{
+		echo $ROUND_MSG
+		exit 4
+	}
+
+	#get absoluate path for env setting, some test cases requirement
+	pushd ./ > /dev/null
+	cd $TMP_DIR
+	TMP_DIR=`pwd`
+	cd - > /dev/null
+	cd $LOG_DIR
+	LOG_DIR=`pwd`
+	cd -  > /dev/null
+	cd $TOOL_DIR > /dev/null
+	TOOL_DIR=`pwd`
+	popd > /dev/null
+
+	export TMP_DIR
+	export LOG_DIR
+	export TOOL_DIR
+
+	execute_test
+}
+
+# call cleanup function on program exit.
+trap "cleanup" 0
+main "$@"
+

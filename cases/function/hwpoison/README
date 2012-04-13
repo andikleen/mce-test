@@ -1,0 +1,15 @@
+tinjpage
+
+tinjpage is a coverage test for the hwpoison page recovery code
+in the kernel. It tests different cases by putting pages
+into different stages, triggering poison injection on them
+and verifies the results.
+
+tinjpage requires a kernel with MADV_POISON injection support and the
+hwpoison testkit, but doesn't require a kernel tree and can be built directly with
+make tinjpage
+
+A few of the test cases are timing dependent and might require adjustment
+to run successfully.
+
+-Andi Kleen
