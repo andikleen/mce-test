@@ -346,7 +346,7 @@ ras_scenarios()
 					done)
 				#remove the first prefix "\|"
 				TMPMODE=${TMPMODE:2}
-				sed -i -e "s/\(.*\)on/\1off/g" $SCENARIO_DIR/$scenario
+				sed -i -e "s/\(^[^#].*\)on$/\1off/g" $SCENARIO_DIR/$scenario
 				if [ X${TMPMODE} != X ]; then
 				sed -i -e "s/\(\(${TMPMODE}\).*\)off/\1on/g" \
 					$SCENARIO_DIR/$scenario
