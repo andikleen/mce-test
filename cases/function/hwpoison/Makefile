@@ -10,7 +10,7 @@ all: ${EXE}
 install: all
 	cp ttranshuge ../../../bin/
 
-tinjpage: LDFLAGS += -lpthread
+tinjpage: LDFLAGS += -pthread
 
 clean:
 	rm -f ${EXE} ${OBJ}

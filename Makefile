@@ -14,5 +14,4 @@ install:
 reset:
 	rm -rf bin/*
 	rm -rf work/*
-	rm -rf results/*
 

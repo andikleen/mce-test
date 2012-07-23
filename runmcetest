@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 ################################################################################
 ##                                                                            ##
 ## This program is free software;  you can redistribute it and#or modify      ##
@@ -47,16 +47,37 @@ NOCASE_MSG="The case list file is not valid, please check \
 and run again."
 ROUND_MSG="The running time is not a valid value, please make
 use of a nonnegtive integer and run again."
+EXIT_MSG="Delete all files under temporary directory"
 
 # Function:    cleanup
 #
 # Description: Remove all temporary files created by this program. Cleanup 
 #              always called on program exit.
+
 cleanup()
 {
 	if ! [ "X${TMP_DIR}" == "X" ]
 	then
-		rm -rf $TMP_DIR/*
+		answer=""
+		# if this script is called by mcemenu, skip query part
+		pid=`echo $$`
+		ppid=`pgrep mcemenu`
+		for id in $ppid; do
+			pgrep -P $id | grep $pid
+			if [ $? -eq 0 ]; then
+				answer="YES"
+				break;
+			fi
+		done
+		if [ -z $answer ]; then
+			read -p "$EXIT_MSG \"${TMP_DIR}\"? [Yes/No]:" answer
+			answer=`echo $answer | tr 'a-z' 'A-Z'`
+		fi
+		if [ "${answer}" == "Y" -o "${answer}" == "YES" \
+			-o "${answer}" == "" ]
+		then
+			rm -rf $TMP_DIR/*
+		fi
 	fi
 }
 
@@ -174,7 +195,7 @@ usage()
 	usage: ${0##*/} [ -t TMPDIR ] [ -s SUMFILE ] [ -o OUTDIR ]
 	[ -b TOODIR ] [ -l CASEFILE ] [ -r RUNTIMES ]
 
-	-t TMPDIR       Directory where temporary files will be created.
+	-t TMPDIR       Directory where temporary files will be created. Don't use important directory.
 	-s SUMDIR       Directory where summary files will be created.
 	-o OUTDIR       Directory where raw test outputs will be created.
 	-b TOODIR	Directory where tool utilities will be placed.
