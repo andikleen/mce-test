@@ -2,6 +2,9 @@ APEI-INJ cases/function/apei-inj/runtest.sh on
 ERST-INJ cases/function/erst-inject/runtest.sh on
 #PFA test depends on correct BIOS/mcelog setting
 PFA cases/function/pfa/runtest.sh on
+#SRAR test highly depends on BIOS implementation
+SRAR-DCU cases/function/core_recovery/runtest_dcu.sh off
+SRAR-IFU cases/function/core_recovery/runtest_ifu.sh off
 #HWpoison
 HWPOISON-SOFT cases/function/hwpoison/run_soft.sh on
 HWPOISON-HARD cases/function/hwpoison/run_hard.sh on
