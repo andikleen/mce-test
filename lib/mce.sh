@@ -300,17 +300,17 @@ get_tolerant()
 
 check_debugfs()
 {
-	mount | grep -q /sys/kernel/debug
+	cat /proc/mounts | grep -q debug
 	[ $? -eq 0 ] && return
 	mount -t debugfs none /sys/kernel/debug
-	mount | grep -q /sys/kernel/debug
+	cat /proc/mounts | grep -q /sys/kernel/debug
 	[ $? -ne 0 ] && die "Kernel without debugfs support ?"
 }
 
 # should be called after check_debugfs
 check_mce()
 {
-	DEBUGFS=`mount | grep debugfs | cut -d ' ' -f3 | head -1`
+	DEBUGFS=`cat /proc/mounts | grep debugfs | cut -d ' ' -f2 | head -1`
 	[ ! -d ${DEBUGFS}/mce ] && die "Kernel without CONFIG_X86_MCE_INJECT ?"
 }
 

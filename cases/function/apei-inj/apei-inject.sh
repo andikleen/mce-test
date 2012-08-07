@@ -49,7 +49,7 @@ main()
 
 	check_debugfs
 	#APEI_IF should be defined after debugfs is mounted
-	APEI_IF=`mount | grep debugfs | cut -d ' ' -f3 | head -1`/apei/einj
+	APEI_IF=`cat /proc/mounts | grep debugfs | cut -d ' ' -f2 | head -1`/apei/einj
 
 	#if einj is a module, it is ensured to have been loaded
 	modinfo einj > /dev/null 2>&1

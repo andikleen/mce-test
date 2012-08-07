@@ -46,7 +46,7 @@ done
 
 [ "$(whoami)" != root ] && fail "Not root"
 check_debugfs
-DEBUG=`mount | grep debugfs | cut -d ' ' -f3 | head -1`
+DEBUG=`cat /proc/mounts | grep debugfs | cut -d ' ' -f2 | head -1`
 #if hwpoison_inject is a module, it is ensured to have been loaded
 modinfo hwpoison_inject > /dev/null 2>&1
 if [ $? -eq 0 ]; then

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+. ../../../lib/mce.sh
+
 INJ_TYPE=0x00000008
 APEI_IF=""
 PFA_BIN=""
@@ -8,15 +10,6 @@ invalid()
 {
 	echo $*
 	exit 1
-}
-
-check_debugfs()
-{
-	mount|grep -q debugfs
-	[ $? -eq 0 ] && return
-	mount -t debugfs none /sys/kernel/debug
-	mount|grep -q /sys/kernel/debug
-	[ $? -ne 0 ] && invalid "Kernel without debugfs support ?"
 }
 
 apei_inj()
@@ -47,7 +40,7 @@ main()
 	PFA_BIN=$1
 	check_debugfs
 
-	APEI_IF=`mount | grep debugfs | cut -d ' ' -f3 | head -1`/apei/einj
+	APEI_IF=`cat /proc/mounts | grep debugfs | cut -d ' ' -f2 | head -1`/apei/einj
 
 	#if einj is not builtin, just insmod it
 	if [ ! -d $APEI_IF ]; then
