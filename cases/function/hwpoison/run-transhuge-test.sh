@@ -2,7 +2,7 @@
 # run-transhuge-test.sh:
 #     Script for hwpoison test of THP(Transparent Huge Page).
 #
-#!/bin/sh
+#!/bin/bash
 #
 
 ROOT=`(cd ../../../; pwd)`

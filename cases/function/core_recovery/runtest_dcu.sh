@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # This test is the SRAR/DCU functional test.
 #
 

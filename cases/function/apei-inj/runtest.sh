@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # This test is the basic EINJ functional test. Only Memory Correctable Error
 # is touched because other tests are possible to cause system hang/crash.
 #
