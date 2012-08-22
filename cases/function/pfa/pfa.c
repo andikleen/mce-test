@@ -39,13 +39,13 @@ struct pagemaps {
 	unsigned long long	present:1;
 };
 
+static int pagesize;
 
 /*
  * get information about address from /proc/{pid}/pagemap
  */
 unsigned long long vtop(unsigned long long addr)
 {
-	static int pagesize;
 	struct pagemaps pinfo;
 	unsigned int pinfo_size = sizeof pinfo;
 	long offset;
@@ -76,6 +76,7 @@ unsigned long long vtop(unsigned long long addr)
 int main()
 {
 	char *p;
+	long total, i;
 	unsigned long long phys, newphys;
 
 	p = mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
@@ -90,12 +91,28 @@ int main()
 	fflush(stdout);
 
 	for (;;) {
+		for (i = 0; i < pagesize; i += sizeof(int)) {
+			total += *(int*)(p + i);
+			*(int*)(p + i) = total;
+		}
+
 		newphys = vtop((unsigned long long)p);
-		if (phys != newphys) {
+		if (phys == newphys) {
+			for (i = 0; i < pagesize; i += sizeof(int)) {
+				total += *(int*)(p + i);
+				*(int*)(p + i) = i;
+			}
+			sleep(2);
+			newphys = vtop((unsigned long long)p);
+			if (phys != newphys) {
+				printf("Page was replaced. New physical address = 0x%llx\n", newphys);
+				fflush(stdout);
+				phys = newphys;
+			}
+		} else {
 			printf("Page was replaced. New physical address = 0x%llx\n", newphys);
 			fflush(stdout);
 			phys = newphys;
 		}
-		sleep(1);
 	}
 }
