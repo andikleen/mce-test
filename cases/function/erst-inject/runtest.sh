@@ -50,13 +50,16 @@ Pay attention:
 
 This test is basic APEI/ERST functional test. In this test case, it will
 test ERST functionality of READ/WRITE/ERASE. Any error in the test
-procedure will be consider as failure and reported.
+procedure will be considered as failure and reported.
+
+Because the ERST test maybe damges the data in the ERST table, please
+restore the valid data in the ERST to the other safe place.
+
 ***************************************************************************
 
 
 EOF
 
-ID=0xdeadbeaf
 ERST=./erst-inject
 LOG=$TMP_DIR/erst.log.$$
 MODSTATUS=0
@@ -65,7 +68,7 @@ err()
 {
 	echo
 	echo ERROR: "$*"
-	echo ERROR: "Please check dmesg for further information"
+	echo ERROR: "Please check dmesg or log for further information"
 	echo -e "\n\nTEST FAILS"
 	exit 1
 }
@@ -85,6 +88,15 @@ fi
 which $ERST &> /dev/null
 [ $? -eq 0 ] || err "Please compile the test case first"
 
+# If ERST table is full, the test can't proceed. To ensure below
+# test can go on, if existing records, remove one first.
+COUNT=`$ERST -n|cut -d' ' -f5`
+if [ $COUNT -ne 0 ]; then
+	ID=`$ERST -p|grep "rcd id"|head -1|cut -d' ' -f3`
+	$ERST -c $ID 1>/dev/null
+fi
+
+ID=0xdeadbeaf
 echo -n "Write one error record into ERST... "
 $ERST -i $ID 1>/dev/null
 if [ ! $? -eq 0 ]; then
