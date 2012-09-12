@@ -5,6 +5,7 @@
 INJ_TYPE=0x00000008
 APEI_IF=""
 PFA_BIN=""
+EDAC_TYPE=""
 
 invalid()
 {
@@ -56,6 +57,18 @@ main()
 	[ $? -ne 0 ] &&
 	invalid "Necessary Error Injection for PFA is not supported on this platform"
 
+	# remove possible EDAC module, otherwise, the error information will be ate
+	# by EDAC module and mcelog will not get it.
+	# By now, only i7core_edac and sb_edac hook into the mcelog kernel buffer
+	cat /proc/modules | grep -q i7core_edac
+	if [ $? -eq 0 ]; then
+		EDAC_TYPE="i7core_edac"
+	else
+		cat /proc/modules | grep -q sb_edac
+		[ $? -eq 0 ] && EDAC_TYPE="sb_edac"
+	fi
+	rmmod $EDAC_TYPE >/dev/null 2>&1
+
 	killall $PFA_BIN > /dev/null 2>&1
 	$PFA_BIN | tee log &
 	#wait to flush stdout into log
@@ -78,6 +91,7 @@ main()
 cleanup()
 {
 	rm -f trigger log
+	modprobe $EDAC_TYPE >/dev/null 2>&1
 }
 
 trap "cleanup" 0
