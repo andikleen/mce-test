@@ -75,15 +75,21 @@ main()
 	sleep 1
 	addr=`cat log |cut -d' '  -f8|tail -1`
 	last_addr=$addr
+	start=`date +%s`
 	while :
 	do
 		echo inject address = $addr
 		apei_inj $addr
 		sleep $2
 		addr=`cat log |cut -d' '  -f8|tail -1`
+		end=`date +%s`
+		timeout=`expr $end - $start`
 		if [ X"$last_addr" != X"$addr" ]
 		then
 			break
+		# assume it is enough to trigger PFA in 5 minutes
+		elif [ $timeout -ge 300 ]; then
+			invalid "Timeout! PFA is not triggered"
 		fi
 	done
 }
