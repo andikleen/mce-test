@@ -342,6 +342,11 @@ ras_scenarios()
 				# item1\|item2\|item3
 				TMPMODE=$(cat $TMPSEL | while read line
 					do
+						# Some dialog output has double quote even if
+						# --separate-output is used. If so, rip them
+						if [ ${line:0:1} = \" -a ${line: -1} = \" ]; then
+							line=${line:1:${#line}-2}
+						fi
 						echo -n \\\|$line
 					done)
 				#remove the first prefix "\|"
