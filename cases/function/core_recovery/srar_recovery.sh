@@ -42,7 +42,9 @@ if [ ! -d $g_debugfs/apei/einj ]; then
 	modprobe einj param_extension=1 > /dev/null 2>&1
 	[ $? -eq 0 ] || invalid "module einj isn't supported?"
 fi
-[ -f $g_debugfs/apei/einj/param1 ] || invalid "no BIOS extension support for APEI on this platform"
+[ -f $g_debugfs/apei/einj/param1 ] || invalid "No BIOS extension support for APEI on this platform"
+[ -f $g_debugfs/apei/einj/notrigger ] ||
+	invalid "No parameter *notrigger*. Injection maybe causes system crash. Please check commit v3.3-3-gee49089"
 
 #check if the platform supports Uncorrectable non-fatal Memory Error injection
 cat $g_debugfs/apei/einj/available_error_type | grep -q $inject_type
