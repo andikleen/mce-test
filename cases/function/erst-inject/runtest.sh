@@ -67,7 +67,7 @@ MODSTATUS=0
 err()
 {
 	echo
-	echo ERROR: "$*"
+	echo -e ERROR: "$*"
 	echo ERROR: "Please check dmesg or log for further information"
 	echo -e "\n\nTEST FAILS"
 	exit 1
@@ -100,7 +100,8 @@ ID=0xdeadbeaf
 echo -n "Write one error record into ERST... "
 $ERST -i $ID 1>/dev/null
 if [ ! $? -eq 0 ]; then
-	err "ERST writing operation fails"
+	err "ERST writing operation fails.\n"\
+"Please confirm if command parameter erst_disable is used or hardware not available"
 fi
 sleep 1
 echo "DONE"
