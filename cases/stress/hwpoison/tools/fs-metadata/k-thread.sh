@@ -1,5 +1,5 @@
-#/bin/bash
-#
+#!/bin/bash
+
 # Test thread for File system metadata stress testing script
 #
 # This program is free software; you can redistribute it and/or
