@@ -379,7 +379,7 @@ static void do_file_clean(int flags, char *name)
 	char *page;
 	char fn[30];
 	snprintf(fn, 30, TMPDIR "~test%d", tmpcount++);
-	int fd = open(fn, O_RDWR|O_TRUNC|O_CREAT);
+	int fd = open(fn, O_RDWR|O_TRUNC|O_CREAT, 0664);
 	if (fd < 0)
 		err("open temp file");
 	write(fd, fn, 4);
