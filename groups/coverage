@@ -1,5 +1,5 @@
 #Coverage test is out-of-date, it is not guaranteed
 #working well with newer kernel
 
-SIMPLE cases/coverage/soft-inj/run_simple.sh off
+#SIMPLE cases/coverage/soft-inj/run_simple.sh off
 #KDUMP cases/coverage/soft-inj/run_kdump.sh off

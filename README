@@ -84,7 +84,8 @@ Futher Information
 For futher information about MCE test suite, please refer to documents
 in doc sub-directory.
 
-doc/howto.txt:		a more detailed HOWTO document
+doc/howto.txt:		a more detailed HOWTO document. This doc is a little
+			bit out of date.
 
 doc/stress-howto.txt:	Detailed HOWTO document for MCE stress test suite
 
