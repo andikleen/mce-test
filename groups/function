@@ -10,4 +10,6 @@ HWPOISON-SOFT cases/function/hwpoison/run_soft.sh on
 HWPOISON-HARD cases/function/hwpoison/run_hard.sh on
 HWPOISON-HUGEPAGE cases/function/hwpoison/run_hugepage.sh on
 HWPOISON-THP cases/function/hwpoison/run_thp.sh on
+#BSP
+BSP cases/function/bsp/runtest.sh on
 #KVM
