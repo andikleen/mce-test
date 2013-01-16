@@ -70,9 +70,10 @@ int hugetlbfs_root(char *dir)
 	char *line = NULL;
 	size_t linelen = 0;
 	char dummy[100];
+	char type[100];
 	while (getline(&line, &linelen, f) > 0) {
-		if (sscanf(line, "none %s hugetlbfs %[^ ]",
-			   dir, dummy) >= 2) {
+		if (sscanf(line, "%s %s hugetlbfs %[^ ]",
+			   type, dir, dummy) >= 3) {
 			found = 1;
 			break;
 		}
