@@ -14,6 +14,11 @@ EOF
 echo 0 > $TMP_DIR/error.$$
 
 pushd `dirname $0` > /dev/null
+
+HT=$TMP_DIR/hugepage
+mkdir -p $HT
+mount -t hugetlbfs none $HT
+
 ./tinjpage
 ./tsimpleinj
 if ! ./tkillpoison
@@ -25,6 +30,7 @@ else
 fi
 ./tprctl
 
+umount $HT
 popd > /dev/null
 
 grep -q "1" $TMP_DIR/error.$$
