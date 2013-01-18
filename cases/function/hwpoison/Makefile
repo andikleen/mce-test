@@ -1,4 +1,4 @@
-CFLAGS += -I -g -Wall
+CFLAGS += -I. -g -Wall
 
 EXE := tinjpage tsimpleinj tkillpoison tprctl tsoft tsoftinj
 EXE += thugetlb ttranshuge
