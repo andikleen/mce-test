@@ -1,5 +1,9 @@
 #!/bin/bash
 
+pushd `dirname $0` > /dev/null
+
+. ./helpers.sh
+
 cat <<-EOF
 
 ***************************************************************************
@@ -11,32 +15,28 @@ This test is hard mode of HWPoison functional test.
 
 EOF
 
-echo 0 > $TMP_DIR/error.$$
+echo "------------------------------------------------------------------------"
+echo "Running tsimpleinj (simple hard offline test)"
+run_test ./tkillpoison failure
 
-pushd `dirname $0` > /dev/null
+echo "------------------------------------------------------------------------"
+echo "Running tsimpleinj (simple hard offline test)"
+run_test ./tsimpleinj success
 
-HT=$TMP_DIR/hugepage
-mkdir -p $HT
-mount -t hugetlbfs none $HT
+echo "------------------------------------------------------------------------"
+echo "Running tinjpage (hard offline test on various types of pages)"
+mount_hugetlbfs
+run_test ./tinjpage success
+unmount_hugetlbfs
 
-./tinjpage
-./tsimpleinj
-if ! ./tkillpoison
-then
-	echo "killed as expected"
-else
-	echo "didn't get killed"
-	echo 1 > $TMP_DIR/error.$$
-fi
-./tprctl
+echo "------------------------------------------------------------------------"
+echo "Running tprctl (hard offline test with various prctl settings)"
+run_test ./tprctl success
 
-umount $HT
+free_resources
+
+show_summary
+
 popd > /dev/null
 
-grep -q "1" $TMP_DIR/error.$$
-if [ $? -eq 0 ]
-then
-	exit 1
-else
-	exit 0
-fi
+exit $failed_testcase
