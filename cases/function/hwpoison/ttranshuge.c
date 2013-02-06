@@ -420,7 +420,7 @@ free_mem:
 		} else
 			print_failure("Child process could not survive.\n");
 	} else {
-		if (sig.si_code == CLD_KILLED && sig.si_status == SIGBUS) {
+		if ((sig.si_code & (CLD_KILLED|CLD_DUMPED)) && sig.si_status == SIGBUS) {
 			print_success("Child process was killed by SIGBUS.\n");
 			ret = THP_SUCCESS;
 		} else

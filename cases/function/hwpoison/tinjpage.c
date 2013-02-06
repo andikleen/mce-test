@@ -54,6 +54,8 @@
 #define cpu_relax() mb()
 #endif
 
+#define CLD_KILLDUMP	(CLD_KILLED|CLD_DUMPED)
+
 typedef unsigned long long u64;
 
 int PS;
@@ -723,7 +725,7 @@ static void do_shared(int shared_mode)
 			sigaction(SIGBUS, NULL, &sigact);
 
 			if (sigact.sa_handler == SIG_DFL) {/* suicide version */
-				if (sig.si_code != CLD_KILLED)
+				if (!(sig.si_code & CLD_KILLDUMP))
 					goto child_error;
 			} else { /* late kill */
 				if (sig.si_code != CLD_EXITED)
@@ -941,7 +943,7 @@ int main(int ac, char **av)
 						failure++;
 					}
 				} else {
-					if (sig.si_code != CLD_KILLED || sig.si_status != SIGBUS) {
+					if (!(sig.si_code & CLD_KILLDUMP) || sig.si_status != SIGBUS) {
 						printf("XXX: %s: child not killed by SIGBUS\n", t->name);
 						failure++;
 					}
