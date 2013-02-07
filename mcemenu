@@ -185,8 +185,8 @@ disp_result()
 	RC=0
 	local RESULTS_LIST=$(for i in `ls -1 -A -I ".git*" -B $SUM_DIR`;\
 			do echo -n "$i [more...] "; done)
-	if ! [ -z $RESULTS_LIST ] ;then
-		while [ $RC -ne "1" ] 
+	if ! [ -z "$RESULTS_LIST" ]; then
+		while [ $RC -ne "1" ]
 		do
 			dialog --clear
 			dialog --backtitle "$BACKTITLE" \
