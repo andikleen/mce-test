@@ -1,4 +1,5 @@
 APEI-INJ cases/function/apei-inj/runtest.sh on
+EINJ-EXT cases/function/einj-ext/runtest.sh off
 ERST-INJ cases/function/erst-inject/runtest.sh on
 #PFA test depends on correct BIOS/mcelog setting
 PFA cases/function/pfa/runtest.sh on
