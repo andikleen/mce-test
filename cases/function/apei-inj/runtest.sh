@@ -16,8 +16,10 @@ are possible to cause system hang/crash, only Memory Correctable Error is
 injected to test the availiability of APEI/EINJ.
 ***************************************************************************
 
-
 EOF
+
+TMP="../../../work"
+export TMP_DIR=${TMP_DIR:-$TMP}
 
 echo 0 > $TMP_DIR/error.$$
 
