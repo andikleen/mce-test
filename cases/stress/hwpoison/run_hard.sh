@@ -34,6 +34,13 @@ whether or not it is a real error.
 
 EOF
 
+TMP="../../../work"
+TMP_DIR=${TMP_DIR:-$TMP}
+if [ ! -d $TMP_DIR ]; then
+	TMP_DIR=$TMP
+fi
+export TMP_DIR
+
 echo 0 > $TMP_DIR/error.$$
 
 pushd `dirname $0` > /dev/null

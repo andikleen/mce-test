@@ -60,6 +60,13 @@ restore the valid data in the ERST to the other safe place.
 
 EOF
 
+TMP="../../../work"
+TMP_DIR=${TMP_DIR:-$TMP}
+if [ ! -d $TMP_DIR ]; then
+	TMP_DIR=$TMP
+fi
+export TMP_DIR
+
 ERST=./erst-inject
 LOG=$TMP_DIR/erst.log.$$
 MODSTATUS=0

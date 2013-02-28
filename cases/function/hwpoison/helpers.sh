@@ -4,6 +4,13 @@ export ROOT=`(cd ../../../; pwd)`
 . $ROOT/lib/functions.sh
 setup_path
 
+TMP="../../../work"
+TMP_DIR=${TMP_DIR:-$TMP}
+if [ ! -d $TMP_DIR ]; then
+TMP_DIR=$TMP
+fi
+export TMP_DIR
+
 executed_testcase=0
 failed_testcase=0
 

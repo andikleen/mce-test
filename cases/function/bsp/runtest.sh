@@ -40,6 +40,13 @@ export ROOT=`pwd`
 
 . $ROOT/lib/functions.sh
 
+TMP="../../../work"
+TMP_DIR=${TMP_DIR:-$TMP}
+if [ ! -d $TMP_DIR ]; then
+	TMP_DIR=$TMP
+fi
+export TMP_DIR
+
 export NUM_CPU=`ls -d /sys/devices/system/cpu/cpu[0-9]* | wc -l`
 export MAX_CPU=`expr $NUM_CPU - 1`
 export BSP_LOG_DIR=$ROOT/cases/function/bsp/log

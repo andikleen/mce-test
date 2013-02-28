@@ -13,7 +13,11 @@ Injection test with ACPI5.0 enabled BIOS.
 EOF
 
 TMP="../../../work"
-export TMP_DIR=${TMP_DIR:-$TMP}
+TMP_DIR=${TMP_DIR:-$TMP}
+if [ ! -d $TMP_DIR ]; then
+	TMP_DIR=$TMP
+fi
+export TMP_DIR
 
 echo 0 > $TMP_DIR/error.$$
 
