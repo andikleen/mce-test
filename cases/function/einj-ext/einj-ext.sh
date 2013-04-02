@@ -70,9 +70,9 @@ check_result()
 	uname -a >> $LOG
 	cat /etc/issue >> $LOG
 	echo -e "\ndmesg information as follows:\n" >> $LOG
-	dmesg  -c &>> $LOG
+	dmesg -c >> $LOG 2>&1
 	echo -e "\nmcelog information as follows:\n" >> $LOG
-	mcelog &>> $LOG
+	mcelog >> $LOG 2>&1
 	while [ $time -lt $timeout ]
 	do
 		grep -q "$GHES_REC" $LOG
