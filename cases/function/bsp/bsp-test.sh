@@ -12,6 +12,10 @@ cat <<-EOF
 
 EOF
 
+export ROOT=`(cd ../../../; pwd)`
+
+. $ROOT/lib/functions.sh
+
 #default cycle to run
 ROUND=10
 

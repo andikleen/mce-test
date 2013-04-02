@@ -35,11 +35,6 @@ mce-test/cases/function/bsp/log/*.bsplog
 
 EOF
 
-#export ROOT=`(cd ../../../; pwd)`
-export ROOT=`pwd`
-
-. $ROOT/lib/functions.sh
-
 TMP="../../../work"
 TMP_DIR=${TMP_DIR:-$TMP}
 if [ ! -d $TMP_DIR ]; then
@@ -47,15 +42,15 @@ if [ ! -d $TMP_DIR ]; then
 fi
 export TMP_DIR
 
-export NUM_CPU=`ls -d /sys/devices/system/cpu/cpu[0-9]* | wc -l`
-export MAX_CPU=`expr $NUM_CPU - 1`
-export BSP_LOG_DIR=$ROOT/cases/function/bsp/log
+#$TMP_DIR can be absolute/relative path. Utilize it to locate BSP directory
+export BSP_DIR=`(cd $TMP_DIR; cd ../cases/function/bsp; pwd)`
+export BSP_LOG_DIR=$BSP_DIR/log
 export BSP_LOG=$BSP_LOG_DIR/$(date +%Y-%m-%d.%H.%M.%S)-`uname -r`.bsplog
 export OUTPUT_LOG=$BSP_LOG_DIR/$(date +%Y-%m-%d.%H.%M.%S)-`uname -r`.output
-export FAILST=$TMP_DIR/fail.list
 
-NUM_FAIL_CPU=`grep "CPU" $FAILST |wc -l`
-NUM_PASS_CPU=`expr $NUM_CPU - $NUM_FAIL_CPU`
+export NUM_CPU=`ls -d /sys/devices/system/cpu/cpu[0-9]* | wc -l`
+export MAX_CPU=`expr $NUM_CPU - 1`
+export FAILST=$TMP_DIR/fail.list
 
 mkdir -p $BSP_LOG_DIR
 touch $FAILST
@@ -79,6 +74,9 @@ and test again. Exiting..."
 	fi
 
 	screen ./bsp-test.sh
+
+	NUM_FAIL_CPU=`grep "CPU" $FAILST |wc -l`
+	NUM_PASS_CPU=`expr $NUM_CPU - $NUM_FAIL_CPU`
 
 	echo "Total CPU Test: $NUM_CPU"
 	echo "Total CPU Pass: $NUM_PASS_CPU"
