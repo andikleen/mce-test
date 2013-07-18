@@ -6,6 +6,7 @@ export ROOT=`(cd ../../../; pwd)`
 . $ROOT/lib/mce.sh
 
 inject_type=0x00000010
+EDAC_TYPE=""
 
 invalid()
 {
@@ -51,6 +52,18 @@ cat $g_debugfs/apei/einj/available_error_type | grep -q $inject_type
 if [ $? -ne 0 ]; then
 	invalid "Uncorrectable non-fatal Memory Error is not supported"
 fi
+
+# remove possible EDAC module, otherwise, the error information will be ate
+# by EDAC module and mcelog will not get it.
+# By now, only i7core_edac and sb_edac hook into the mcelog kernel buffer
+cat /proc/modules | grep -q i7core_edac
+if [ $? -eq 0 ]; then
+	EDAC_TYPE="i7core_edac"
+else
+	cat /proc/modules | grep -q sb_edac
+	[ $? -eq 0 ] && EDAC_TYPE="sb_edac"
+fi
+rmmod $EDAC_TYPE >/dev/null 2>&1
 
 touch trigger
 tail -f trigger | ./core_recovery $1 > log &
