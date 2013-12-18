@@ -3,6 +3,7 @@
 export ROOT=`(cd ../../../; pwd)`
 . $ROOT/lib/functions.sh
 setup_path
+. $ROOT/lib/mce.sh
 
 TMP="../../../work"
 TMP_DIR=${TMP_DIR:-$TMP}
@@ -73,4 +74,19 @@ unmount_hugetlbfs() {
 		rm -rf $mountpoint/*
 	done
 	umount $HT
+}
+
+load_hwpoison_inject() {
+	local path
+
+	check_debugfs
+	path=`cat /proc/mounts | grep debugfs | cut -d ' ' -f2 | head -1`/hwpoison
+	if [ ! -d $path ] ; then
+		modprobe hwpoison-inject
+		if [ $? -ne 0 ] ; then
+			die "Failed to load hwpoison-inject module. Abort."
+		else
+			echo "hwpoison-inject module is loaded."
+		fi
+	fi
 }
