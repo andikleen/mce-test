@@ -10,6 +10,11 @@ pushd `dirname $0` > /dev/null
 
 mount_hugetlbfs
 
+load_hwpoison_inject
+
+# make sure we have no hwpoisoned hugepage before starting this test.
+free_resources > /dev/null
+
 exec_testcase() {
 	echo "-------------------------------------"
 	echo "TestCase $@"

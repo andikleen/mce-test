@@ -9,6 +9,11 @@ pushd `dirname $0` > /dev/null
 
 . ./helpers.sh
 
+load_hwpoison_inject
+
+# make sure we have no hwpoisoned hugepage before starting this test.
+free_resources > /dev/null
+
 THP_POISON_PRO="ttranshuge"
 
 THP_SYS_PATH="/sys/kernel/mm/transparent_hugepage"
