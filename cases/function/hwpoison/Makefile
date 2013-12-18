@@ -1,7 +1,7 @@
 CFLAGS += -I. -g -Wall
 
 EXE := tinjpage tsimpleinj tkillpoison tprctl tsoft tsoftinj
-EXE += thugetlb ttranshuge
+EXE += thugetlb ttranshuge thugetlb_overcommit
 
 OBJ := $(addsuffix .o,${EXE})
 
