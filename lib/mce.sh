@@ -307,6 +307,17 @@ check_debugfs()
 	[ $? -ne 0 ] && die "Kernel without debugfs support ?"
 }
 
+check_eMCA_config()
+{
+	MODULE="acpi_extlog"
+
+	cat /proc/iomem | grep -q -o "L1 Table"
+	if [ $? -ne 0 ]; then
+		modprobe $MODULE &> /dev/null
+		[ $? -ne 0 ] && die "module $MODULE isn't supported or eMCA Table doesn't exist?"
+	fi
+}
+
 # should be called after check_debugfs
 check_mce()
 {
