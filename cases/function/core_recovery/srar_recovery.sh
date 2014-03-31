@@ -73,8 +73,11 @@ sleep 1
 echo go > trigger
 sleep 2
 rm -f trigger log
-pgrep core_recovery > /dev/null 2>&1 | xargs kill -9 > /dev/null 2>&1
-[ $? -eq 0 ] && invalid "The poisoned process can't be killed by kernel. Test fails!"
+id=`pgrep core_recovery`
+if [ X"$id" != X ]; then
+	echo $id | xargs kill -9 > /dev/null 2>&1
+	invalid "The poisoned process can't be killed by kernel automatically. Test fails!"
+fi
 
 if [ $1 == "-d" ]; then
 	echo "SRAR/DCU test passes!"
