@@ -18,6 +18,7 @@ apei_inj()
 	echo $INJ_TYPE > $APEI_IF/error_type
 	echo $1 > $APEI_IF/param1
 	echo 0xfffffffffffff000 > $APEI_IF/param2
+	echo 1 > $APEI_IF/notrigger
 	echo 1 > $APEI_IF/error_inject
 }
 
