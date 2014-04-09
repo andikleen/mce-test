@@ -32,7 +32,7 @@ unmount_hugetlbfs
 
 echo "------------------------------------------------------------------------"
 echo "Running random_offline (random soft offline test for 60 seconds)"
-run_test "./random_offline -t 60" sucess
+run_test "./random_offline -t 60" success
 
 free_resources
 

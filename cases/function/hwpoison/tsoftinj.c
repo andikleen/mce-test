@@ -93,12 +93,12 @@ void disk_backed(char *name, int flags)
 {
 	char fn[100];
 	snprintf(fn, sizeof fn, TMPDIR "~test%u", getpid());
-	printf("shared, diskbacked\n");
+	printf("private, diskbacked\n");
 	int fd = open(fn, O_RDWR|O_CREAT|O_TRUNC, 0644);
 	if (fd < 0) err("open tmpfile");
 	write(fd, empty, sizeof empty);
 	char *p = checked_mmap(NULL, PS, PROT_READ|PROT_WRITE, 
-			MAP_SHARED|flags, fd, 0);
+			MAP_PRIVATE|flags, fd, 0);
 	*(volatile int *)p = 1;
 	offline(ndesc(fn, "disk backed", name), p);
 	munmap(p, PS);
@@ -185,7 +185,7 @@ int main(void)
 	check(&count, "anonymous mlock", 1);
 	disk_backed("disk backed", 0);
 	check(&count, "disk backed", 1);
-	disk_backed("disk backed mlock", 0);
+	disk_backed("disk backed mlock", MAP_LOCKED);
 	check(&count, "disk backed mlock", 1);
 	shm_hugepage("shm hugepage", 0);
 	check(&count, "shm hugepage", HPS / PS);
