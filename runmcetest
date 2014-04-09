@@ -193,12 +193,12 @@ usage()
 	cat <<-EOF
 
 	usage: ${0##*/} [ -t TMPDIR ] [ -s SUMFILE ] [ -o OUTDIR ]
-	[ -b TOODIR ] [ -l CASEFILE ] [ -r RUNTIMES ]
+	[ -b TOOLDIR ] [ -l CASEFILE ] [ -r RUNTIMES ]
 
 	-t TMPDIR       Directory where temporary files will be created. Don't use important directory.
 	-s SUMDIR       Directory where summary files will be created.
 	-o OUTDIR       Directory where raw test outputs will be created.
-	-b TOODIR	Directory where tool utilities will be placed.
+	-b TOOLDIR	Directory where tool utilities will be placed.
 	-l CASEFILE     File where test case list will be used in the test.
 	-r RUNTIMES	Assign the whole test rounds. 0 means infinite loop.
 	-h              Help. Prints all available options.

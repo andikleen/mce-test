@@ -1,0 +1,8 @@
+casefile is used to save what test cases will be used finally. Here is an
+example to create it by hand.
+
+1. Copy one or more files from directory groups, say function, to somewhere.
+2. Open this file and remove all "on|off" at the end of line from every line.
+3. Delete unnecessary test cases. Here one line corresponds to one test case.
+4. Save this file and rename it to any name you prefer.
+5. When you execute runmcetest, use parameter "-l" along with this file.
