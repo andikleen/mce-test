@@ -1,12 +1,10 @@
 KVM RAS Test Suite
 ==================
-The KVM RAS Test Suite is a collection of test scripts for testing the
-Linux kernel MCE processing features in KVM guest system.
+The KVM RAS Test Suite is a collection of test scripts for testing
+Linux kernel MCE processing features in QEMU/KVM.
 
-Jan 26th, 2010
-
-Jiajia Zheng
-
+Jiajia Zheng, Jan 26th, 2010
+Updated by Wen Jin <wenx.jin@intel.com>, 2015-12-08
 
 In the Package
 ----------------
@@ -25,28 +23,49 @@ KVM RAS Test Suite has following dependencies on kernel and other tools:
 
 * Linux Kernel:
   Version 2.6.32 or newer, with MCA high level handlers enabled.
+  To test LMCE(Local MCE), kernel 4.3+ is needed.
 
 * mce-inject
-  A tool to inject mce error into kernel
+  A tool to inject MCE error(spoof) into kernel.
+
+* mcelog
+  A tool that must be installed on both host and guest system to collect
+  logs related to MCE error. Ensure mcelog always running in daemon mode
+  on guest system after booting up. Please always use latest version.
+
+  You can get it from here:
+  git://git.kernel.org/pub/scm/utils/cpu/mce/mcelog.git
+  https://git.kernel.org/pub/scm/utils/cpu/mce/mcelog.git
 
 * page-types:
-  A tool to query page types, which is accompanied with Linux kernel
-  source (2.6.32 or newer, $KERNEL_SRC/Documentation/vm/page-types.c).
+  A tool to query page types, which is accompanied by Linux kernel
+  source (2.6.32+, $KERNEL_SRC/Documentation/vm/page-types.c or
+  3.3+ $KERNEL_SRC/tools/vm/page-types.c).
 
 * simple_process:
-  A process constantly access the allocated memeory. (../tools/simple_process)
+  A process constantly access the allocated memeory.
+  Located under mce-test/tools/simple_process/.
+
+* victim
+  Play a role like *simple_process* but more powerful.
+
+* qemu-img:
+  QEMU disk image utility.
+
+* qemu-nbd:
+  A tool to mount QEMU disk image(i.e. qcow2) with NBD protocol.
 
 * kpartx:
-  A tool to list partition mappings from partition tables
+  A tool to list partition mappings from partition tables.
 
 * (optionally) losetup
-  A tool to set up and control loop devices
+  A tool to set up and control loop devices.
 
 * (optionally) pvdisplay/vgchange:
-  A tool to display/change physical volume attribute
+  A tool to display/change physical volume attribute.
 
 * (optionally) ssh-keygen
-  A tool to provide the authentication key generation, management and conversion
+  A tool to provide the authentication key generation, management and conversion.
 
 Test method
 ---------------
@@ -54,15 +73,45 @@ Test method
 
 - Translate this address untill we get the physical address on the host OS
 
-- Software injects an SRAO MCE at that physical address from host OS
+- Software injects an SRAO error via mce-inject on that physical address from host OS
 
-- (optionally) Write to the address from the guest, i.e attempt to
+- Or inject an SRAR error via EINJ at that physical address from host OS
+
+- (optionally) Read/Write on the same address from the guest, i.e. attempt to
   write to the poisoned page from the guest.
 
-the expected result:
+- NOTE: SRAR error must be injected via EINJ rather than mce-inject. It is because
+  SRAR error can be generated only in the process context in which it is triggered,
+  so if injected via mce-inject, the error is triggered in mce-inject execution
+  context but not in QEMU's. Host kernel will not send signal SRAR to QEMU.
+  On the other hand, if injected via EINJ in host but triggered in VM/QEMU,
+  QEMU can receive signal SRAR correctly from host kernel.
+
+The test command and expected result, i.e, lists as below:
+----------------
+
+1. for SRAO error:
+
+bash> ./host_run.sh -t spoof -i test.qcow2 -f SRAO
+  2 logical volume(s) in volume group "VolGroup" now active
+mount LVM image to /tmp/tmp.qFt9RbQhkk
+  0 logical volume(s) in volume group "VolGroup" now active
+/dev/nbd0 disconnected
+Start the default kernel on guest system,test.qcow2
+monitor console is /dev/pts/0
+serial console is /dev/pts/1
+Waiting for guest system start up...
+Guest physical address is 0x6e0a7000
+Host virtual address is 7fbfe9ea7
+Host physical address is 0x8092a7000
+calling mce-inject /root/mce-test/cases/function/kvm/host/mce_inject_data
+Guest physical klog address is 0x6e0a7
+localhost.localdomain login: MCE 0x6e0a7: Killing simple_process:3230 due to hardware memory corruption
+MCE 0x6e0a7: recovery action for dirty LRU page: Recovered
+PASS: Inject error into guest!
+PASS: Guest System alive!
 
 HOST system dmesg:
-
 ...
 Machine check injector initialized
 Triggering MCE exception on CPU 0
@@ -73,7 +122,6 @@ MCE 0x806324: Killing qemu-system-x86:8829 early due to hardware memory corrupti
 MCE 0x806324: dirty LRU page recovery: Recovered
 ...
 
-
 GUEST system dmesg:
 ...
 [Hardware Error]: Machine check events logged
@@ -81,6 +129,64 @@ MCE 0x75925: Killing simple_process:2273 early due to hardware memory corruption
 MCE 0x75925: dirty LRU page recovery : Recovered
 ...
 
+2. for SRAR error:
+
+bash> ./host_run.sh -t real -i test.qcow2
+  2 logical volume(s) in volume group "VolGroup" now active
+mount LVM image to /tmp/tmp.2wbxFrY3Sd
+  0 logical volume(s) in volume group "VolGroup" now active
+/dev/nbd0 disconnected
+Start the default kernel on guest system,test.qcow2
+monitor console is /dev/pts/0
+serial console is /dev/pts/1
+Waiting for guest system start up...
+Guest physical address is 0x6e3a0000
+Host virtual address is 0x7fb1f21a0000
+Host physical address is 0x4225a0000
+calling apei_inj 0x4225a0000
+SRAR error triggered successfully
+LMCE happens
+PASS: Inject error into guest!
+PASS: Guest System alive!
+
+Host mcelog information:
+
+Hardware event. This is not a software error.
+MCE 0
+CPU 2 BANK 1 TSC 76f903d0667e
+MISC 86 ADDR 4225a0000
+TIME 1446728506 Thu Nov  5 08:01:46 2015
+MCG status:RIPV EIPV MCIP
+MCi status:
+Uncorrected error
+Error enabled
+MCi_MISC register valid
+MCi_ADDR register valid
+SRAR
+MCA: Data CACHE Level-0 Data-Read Error
+STATUS bd80002000100134 MCGSTATUS 7
+MCGCAP 7000c16 APICID 4 SOCKETID 0
+CPUID Vendor Intel Family 6 Model 63
+
+Guest mcelog information:
+
+Hardware event. This is not a software error.
+MCE 0
+CPU 1 BANK 9 TSC 22b34556c4
+RIP 33:401311
+MISC 8c ADDR 6e3a0000
+TIME 1446728507 Thu Nov  5 08:01:47 2015
+MCG status:EIPV MCIP LMCE
+MCi status:
+Uncorrected error
+Error enabled
+MCi_MISC register valid
+MCi_ADDR register valid
+SRAR
+MCA: Data CACHE Level-0 Data-Read Error
+STATUS bd80000000000134 MCGSTATUS e
+MCGCAP 900010a APICID 1 SOCKETID 1
+CPUID Vendor Intel Family 6 Model 60
 
 Installation
 ---------------
@@ -95,50 +201,49 @@ Installation
 	CONFIG_ARCH_SUPPORTS_MEMORY_FAILURE=y
 	CONFIG_MEMORY_FAILURE=y
 
-   NOTE: if the host machine doesn't support software error recovery
+   NOTE: if host machine doesn't support software error recovery
    (MCG_SER_P in IA32_MCG_CAP[24]), please apply the patch fake_ser_p.patch
    under ./patches/
 2. Use ssh-keygen to generate public and privite keys on the host OS,
    and copy id_rsa and id_rsa.pub from ~/.ssh/ into the testing directory
    on the host system.
-3. compile and install qemu-kvm
-   the qemu-kvm source can be got from git://git.kernel.org/pub/scm/virt/kvm/qemu-kvm.git.
-   Before compile qemu-kvm, a patch p2v.patch should be applied. This patch
-   is located under ./patches/
+3. compile and install QEMU
+   The QEMU source can be got from git://git.qemu-project.org/qemu.git.
+   To build QEMU, under QEMU directory, run ./configure --target-list=x86_64-softmmu
+    --disable-strip, and then make;make install.
    Please ensure *SDL-devel* library is installed on the host machine, otherwise
-   only VNC can be used substituing local graphic output.
-4. install the guest OS on the qemu
-   e.g. 
+   only VNC can be used to substitue local graphic output.
+4. install the guest OS on the QEMU
+   e.g.
    step 1: qemu-img create -f qcow2 test.img 10G
    step 2: qemu-system-x86_64 -hda ./test.img -m 2048 -cdrom rhel6.iso -boot d
    after the installation, please be sure to execute the following check:
      a) add necessary command line parameters under your boot item.
-        This is to enable console output redirection to the serial.
-        e.g.
-          before:
-        	title Red Hat Enterprise Linux Server (2.6.32kvm)
-        		root (hd0,1)
-        		kernel /boot/vmlinuz-2.6.32kvm ro root=/dev/sda1
-        		initrd /boot/initramfs-2.6.32kvm.img
-             after:
-        	title Red Hat Enterprise Linux Server (2.6.32kvm)
-        		root (hd0,1)
-        		kernel /boot/vmlinuz-2.6.32kvm ro root=/dev/sda1 console=tty0 console=ttyS0,115200n8
-        		initrd /boot/initramfs-2.6.32kvm.img
+	This is to enable console output redirection to the serial.
+	e.g.
+	  before:
+		title Red Hat Enterprise Linux Server (2.6.32kvm)
+			root (hd0,1)
+			kernel /boot/vmlinuz-2.6.32kvm ro root=/dev/sda1
+			initrd /boot/initramfs-2.6.32kvm.img
+	     after:
+		title Red Hat Enterprise Linux Server (2.6.32kvm)
+			root (hd0,1)
+			kernel /boot/vmlinuz-2.6.32kvm ro root=/dev/sda1 console=tty0 console=ttyS0,115200n8
+			initrd /boot/initramfs-2.6.32kvm.img
      b) DHCP guest ethernet card. This operation is to ensure the network connection
-        is OK.
-        e.g.
-          bash> dhclient eth0
+	is OK.
+	e.g.
+	  bash> dhclient eth0
      c) enable SSH public/private key authorization, otherwise, the SSH connection password
-        is necessary to be provided in the test progress.
-        please check /etc/ssh/ssd_config and ensure related options are opened.
-        e.g.
-          RSAAuthentication yes
-          PubkeyAuthentication yes
-        after the related options are opened, please restart ssh service
-        e.g.
-          bash> service sshd restart
-
+	is necessary to be provided in the test progress.
+	please check /etc/ssh/ssd_config and ensure related options are opened.
+	e.g.
+	  RSAAuthentication yes
+	  PubkeyAuthentication yes
+	after the related options are opened, please restart ssh service
+	e.g.
+	  bash> service sshd restart
 
 Start Testing
 ---------------

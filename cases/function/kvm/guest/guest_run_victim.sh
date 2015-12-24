@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Test script for KVM RAS
+# Test script for SRAR error injection
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public
@@ -16,20 +16,23 @@
 # on your Linux system; if not, write to the Free Software Foundation,
 # Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #
-# Copyright (C) 2010, Intel Corp.
-# Author: Jiajia Zheng <jiajia.zheng@intel.com>
+# Copyright (C) 2015, Intel Corp.
+# Author: Wen Jin <wenx.jin@intel.com>
 #
 
-killall simple_process
+killall victim
+cat /dev/null > /var/log/mcelog
+sleep 1
 
-cd GUEST_DIR
+cd GUEST_DIR/victim
+gcc -o victim victim.c
+cd ..
 
-./simple_process > /dev/null &
+./victim/victim -k 0 -d > guest_phys &
+sleep 1
 
-./page-types -p `pidof simple_process` -LN -b anon > guest_page
-if [ -s guest_page ]; then
-	ADDR_KLOG=`awk 'NR > 3 {print "0x"$2}' guest_page | sed -n -e '1p'`
-	ADDR=`echo $ADDR_KLOG"000"`
+if [ -s guest_phys ]; then
+	ADDR=`cat guest_phys | awk '{print $NF}'`
 	echo "guest physical address is $ADDR" > guest_tmp
 fi
 
