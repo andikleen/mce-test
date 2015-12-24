@@ -3,6 +3,8 @@
 #set -x
 export ROOT=`(cd ../../../; pwd)`
 
+. $ROOT/lib/functions.sh
+setup_path
 . $ROOT/lib/mce.sh
 
 inject_type=0x00000010
@@ -65,15 +67,17 @@ else
 fi
 rmmod $EDAC_TYPE >/dev/null 2>&1
 
+[ -e $ROOT/bin/victim ] || invalid "file victim doesn't exist!" \
+"maybe you forget to execute make install under directory $ROOT before test"
 touch trigger
-tail -f trigger | ./core_recovery $1 > log &
+tail -f trigger | victim $1 > log &
 addr=`cat log |cut -d' '  -f6|head -1`
 apei_inj $addr
 sleep 1
 echo go > trigger
 sleep 2
 rm -f trigger log
-id=`pgrep core_recovery`
+id=`pgrep victim`
 if [ X"$id" != X ]; then
 	echo $id | xargs kill -9 > /dev/null 2>&1
 	invalid "The poisoned process can't be killed by kernel automatically. Test fails!"

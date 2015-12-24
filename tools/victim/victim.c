@@ -1,49 +1,31 @@
 /*
- * Victim
+ * Set up to get zapped by a machine check (injected elsewhere)
+ * To use this test case please ensure your SUT(System Under Test)
+ * can support MCE/SRAR.
  *
- * Victim workes under user context, which provides target memory chunk for
- * error injection. It can be used for all kinds of error types, including
- * Corrected error and Uncorrected error(IFU/DCU).
+ * This file is released under the GPLv2.
  *
- * Here is an simple example for DCU:
- * Mmap one page memory and returns starting address, and then translate
- * virtual address to physical address. Caller like shell script can
- * inject UC error (error type 0x10 in EINJ table) on returned physical
- * address. Meanwhile, victim continues to read/write on returned memory
- * space to trigger DCU happening ASAP.
- *
- * Copyright (C) 2015, Intel Corp.
+ * Copyright (C) 2012-2015 Intel corporation
  *
  * Author:
- *    Zhilong Liu <zhilongx.liu@intel.com>
- *
- * Date:
- *    01/15 2015
- *
- * History:  Revision history
- *           None
+ *    Tony Luck <tony.luck@intel.com>
+ *    Gong Chen <gong.chen@intel.com>
+ *    Wen Jin <wenx.jin@intel.com>
  */
+
 
 #include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <getopt.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <time.h>
-
-/*
- * Use below macros to make this a non-trivial sized function.
- */
-#define PLUS10 (ifunc_ret++, ifunc_ret++, ifunc_ret++, ifunc_ret++, \
-		ifunc_ret++, ifunc_ret++, ifunc_ret++, ifunc_ret++, \
-		ifunc_ret++, ifunc_ret++)
-#define PLUS100 (PLUS10, PLUS10, PLUS10, PLUS10, PLUS10, PLUS10, \
-		PLUS10, PLUS10, PLUS10, PLUS10)
-#define PLUS1000 (PLUS100, PLUS100, PLUS100, PLUS100, PLUS100, \
-		PLUS100, PLUS100, PLUS100, PLUS100, PLUS100)
-
-static int pagesize;
+#include <signal.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <getopt.h>
+#include <errno.h>
 
 /*
  * Definition of /proc/pid/pagemap
@@ -55,6 +37,7 @@ static int pagesize;
  * Bit  62    page swapped
  * Bit  63    page present
  */
+
 struct pagemaps {
 	unsigned long long	pfn:55;
 	unsigned long long	pgshift:6;
@@ -63,33 +46,34 @@ struct pagemaps {
 	unsigned long long	present:1;
 };
 
-/* Don't let compiler optimize away access to this */
-volatile int ifunc_ret;
+static int pagesize;
 
-int ifunc(void)
+/*
+ * dummyfunc size should be less than one page after complied,
+ * otherwise, caller will not return from this function
+ */
+void dummyfunc(void)
 {
-	ifunc_ret = 0;
+	int fatarray[64];
 
-	PLUS1000;
-
-	return ifunc_ret;
+	fatarray[0] = 0xdeadbeaf;
+	fatarray[8] = 0xdeadbeaf;
+	fatarray[16] = 0xdeadbeaf;
+	fatarray[32] = 0xdeadbeaf;
 }
 
 /*
  * get information about address from /proc/{pid}/pagemap
  */
-unsigned long long vtop(unsigned long long addr)
+unsigned long long vtop(unsigned long long addr, pid_t pid)
 {
 	struct pagemaps pinfo;
 	unsigned int pinfo_size = sizeof(pinfo);
-	long offset;
+	unsigned long long offset = addr / pagesize * pinfo_size;
 	int fd, pgmask;
 	char pagemapname[64];
 
-	if (!pagesize)
-		pagesize = getpagesize();
-	offset = addr / pagesize * pinfo_size;
-	sprintf(pagemapname, "/proc/%d/pagemap", getpid());
+	sprintf(pagemapname, "/proc/%d/pagemap", pid);
 	fd = open(pagemapname, O_RDONLY);
 	if (fd == -1) {
 		perror(pagemapname);
@@ -101,113 +85,62 @@ unsigned long long vtop(unsigned long long addr)
 		return 0;
 	}
 	close(fd);
-	if (!pinfo.present)
-		return ~0ull;
-	pgmask = (1 << pinfo.pgshift) - 1;
-	return (pinfo.pfn << pinfo.pgshift) | (addr & pgmask);
+	pgmask = pagesize - 1;
+	return (pinfo.pfn * pagesize) | (addr & pgmask);
 }
 
 static void usage(void)
 {
 	printf(
 "victim [options]\n"
-"       -d|--data		Inject data error(DCU error) under user context\n"
-"       -i|--instruction	Inject instruction error(IFU error) under user context\n"
-"	-p|--pfa		Inject memory CE consecutivelly under user context to trigger pfa\n"
-"       -h|--help		Show this usage message\n"
+"	-a|--address vaddr=val, pid=val	Translate process virtual address into physical address\n"
+"	-d|--data			Inject data error(DCU error) under user context\n"
+"	-i|--instruction		Inject instruction error(IFU error) under user context\n"
+"	-k|--kick 0/1			Kick off trigger. Auto(0), Manual(1, by default)\n"
+"	-h|--help			Show this usage message\n"
 	);
 }
 
 static const struct option opts[] = {
-	{ "data",        0, NULL, 'd' },
-	{ "instruction", 0, NULL, 'i' },
-	{ "pfa",         0, NULL, 'p' },
-	{ "help",        0, NULL, 'h' },
-	{ NULL,          0, NULL,  0 }
+	{ "address"	, 1, NULL, 'a' },
+	{ "data"	, 0, NULL, 'd' },
+	{ "instruction"	, 0, NULL, 'i' },
+	{ "help"	, 0, NULL, 'h' },
+	{ "kick"	, 1, NULL, 'k' },
+	{ NULL		, 0, NULL, 0 }
 };
-
-void trigger_ifu(void)
-{
-	time_t now;
-	char answer[16];
-	unsigned long long phys;
-	void (*f)(void) = (void (*)(void))ifunc;
-
-	phys = vtop((unsigned long long)f);
-	printf("physical address of (%p) = 0x%llx\n"
-		"Hit any key to trigger error: ", f, phys);
-	fflush(stdout);
-	read(0, answer, 16);
-	now = time(NULL);
-	printf("Access time at %s\n", ctime(&now));
-	while (1)
-		f();
-}
-
-void trigger_dcu(unsigned long long virt, unsigned long long phys)
-{
-	int i;
-	long total;
-	time_t now;
-	char answer[16];
-
-	printf("physical address of (0x%llx) = 0x%llx\n"
-		"Hit any key to trigger error: ", virt, phys);
-	fflush(stdout);
-	read(0, answer, 16);
-	now = time(NULL);
-	printf("Access time at %s\n", ctime(&now));
-	while (1) {
-		for (i = 0; i < pagesize; i += sizeof(int))
-			total += *(int *)(virt + i);
-	}
-}
-
-/*
- * test PFA when inject CE(0x8) consecutivelly
- */
-void trigger_pfa(unsigned long long virt, unsigned long long phys)
-{
-	int i;
-	long total;
-	unsigned long long newphys;
-
-	printf("physical address of (0x%llx) = 0x%llx\n", virt, phys);
-	fflush(stdout);
-	while (1) {
-		for (i = 0; i < pagesize; i += sizeof(int)) {
-			total += *(int *)(virt + i);
-			*(int *)(virt + i) = total;
-		}
-
-		newphys = vtop(virt);
-		if (phys == newphys) {
-			for (i = 0; i < pagesize; i += sizeof(int)) {
-				total += *(int *)(virt + i);
-				*(int *)(virt + i) = i;
-			}
-			sleep(2);
-			newphys = vtop(virt);
-			if (phys != newphys) {
-				printf("Page was replaced. New phys addr = 0x%llx\n",
-						newphys);
-				fflush(stdout);
-				phys = newphys;
-			}
-		} else {
-			printf("Page was replaced. New phys addr = 0x%llx\n",
-					newphys);
-			fflush(stdout);
-			phys = newphys;
-		}
-	}
-}
 
 int main(int argc, char **argv)
 {
-	int c;
-	char *p;
-	unsigned long long phys;
+	unsigned long long virt, phys;
+	long total;
+	char *buf;
+	int c, i;
+	int iflag = 0, dflag = 0;
+	int kick = 1;
+	pid_t pid;
+	enum {
+		I_VADDR = 0,
+		I_PID
+	};
+	char *const token[] = {
+		[I_VADDR] = "vaddr",
+		[I_PID] = "pid",
+		NULL
+	};
+	char *subopts;
+	char *subval;
+	char *svaddr;
+	char *spid;
+	int err;
+	int index;
+	const char *trigger = "./trigger_start";
+	const char *trigger_flag = "trigger";
+	int fd;
+	int count = 100;
+	char trigger_buf[16];
+	char answer[16];
+	time_t	now;
 
 	if (argc <= 1) {
 		usage();
@@ -215,32 +148,150 @@ int main(int argc, char **argv)
 	}
 
 	pagesize = getpagesize();
-	/* only RD/WR permission needed */
-	p = mmap(NULL, pagesize, PROT_READ|PROT_WRITE,
-			MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-	if (p == MAP_FAILED) {
-		perror("mmap");
-		return 1;
-	}
-	/* make sure that kernel does allocate page */
-	memset(p, '*', pagesize);
-	phys = vtop((unsigned long long)p);
 
-	while ((c = getopt_long(argc, argv, "diph", opts, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "a:dihk:", opts, NULL)) != -1) {
 		switch (c) {
+		case 'a':
+			err = 0;
+			subopts = optarg;
+			while (*subopts != '\0' && !err) {
+				index = getsubopt(&subopts, token, &subval);
+				switch (index) {
+				case I_VADDR:
+					if (subval != NULL) {
+						svaddr = subval;
+						break;
+					} else {
+						fprintf(stderr,
+							"miss value for %s\n",
+							token[I_VADDR]);
+						err++;
+						continue;
+					}
+				case I_PID:
+					if (subval != NULL) {
+						spid = subval;
+						break;
+					} else {
+						fprintf(stderr,
+							"miss value for %s\n",
+							token[I_PID]);
+						err++;
+						continue;
+					}
+				default:
+					err++;
+					break;
+				}
+			}
+			if (err > 0) {
+				usage();
+				return 0;
+			}
+			errno = 0;
+			virt = strtoull(svaddr, NULL, 0);
+			if ((virt == 0 && svaddr[0] != '0') || errno != 0) {
+				fprintf(stderr, "Invalid virtual address: %s\n",
+					svaddr);
+				return 1;
+			}
+			errno = 0;
+			pid = strtoul(spid, NULL, 0);
+			if ((pid == 0 && spid[0] != '0') || errno != 0) {
+				fprintf(stderr, "Invalid process pid number: %s\n",
+					spid);
+				return 1;
+			}
+			phys = vtop(virt, pid);
+			printf("physical address of (%d,0x%llx) = 0x%llx\n",
+				pid, virt, phys);
+			return 0;
 		case 'd':
-			trigger_dcu((unsigned long long)p, phys);
+			dflag = 1;
 			break;
 		case 'i':
-			trigger_ifu();
+			iflag = 1;
 			break;
-		case 'p':
-			trigger_pfa((unsigned long long)p, phys);
+		case 'k':
+			errno = 0;
+			kick = strtol(optarg, NULL, 0);
+			if ((kick == 0 && optarg[0] != '0') || errno != 0) {
+				fprintf(stderr, "Invalid parameter: %s\n", optarg);
+				return 1;
+			}
+			if (kick != 0 && kick != 1) {
+				fprintf(stderr, "Invalid parameter: %s\n", optarg);
+				return 1;
+			}
 			break;
 		case 'h':
 		default:
 			usage();
 			return 0;
+		}
+	}
+
+	buf = mmap(NULL, pagesize, PROT_READ|PROT_WRITE|PROT_EXEC,
+		MAP_ANONYMOUS|MAP_PRIVATE|MAP_LOCKED, -1, 0);
+
+	if (buf == MAP_FAILED) {
+		fprintf(stderr, "Can't get a single page of memory!\n");
+		return 1;
+	}
+	memset(buf, '*', pagesize);
+	pid = getpid();
+	phys = vtop((unsigned long long)buf, pid);
+	if (phys == 0) {
+		fprintf(stderr, "Can't get physical address of the page!\n");
+		return 1;
+	}
+
+	if (iflag)
+		memcpy(buf, (void *)dummyfunc, pagesize);
+
+	printf("physical address of (0x%llx) = 0x%llx\n",
+		(unsigned long long)buf, phys);
+	fflush(stdout);
+	if (kick == 0) {
+		errno = 0;
+		if (unlink(trigger) < 0 && errno != ENOENT) {
+			fprintf(stderr, "fail to remove trigger file\n");
+			return 1;
+		}
+		memset(trigger_buf, 0, sizeof(trigger_buf));
+		while (count--) {
+			if ((fd = open(trigger, O_RDONLY)) < 0) {
+				sleep(1);
+				continue;
+			}
+			if (read(fd, trigger_buf, sizeof(trigger_buf)) > 0 &&
+				strstr(trigger_buf, trigger_flag) != NULL) {
+				break;
+			}
+			sleep(1);
+		}
+		if (count == 0) {
+			fprintf(stderr,
+				"Timeout to get trigger flag file\n");
+			return 1;
+		}
+	} else {
+		printf("Hit any key to trigger error: ");
+		fflush(stdout);
+		read(0, answer, 16);
+		now = time(NULL);
+		printf("Access time at %s\n", ctime(&now));
+	}
+	if (iflag) {
+		void (*f)(void) = (void (*)(void))buf;
+
+		while (1) f();
+	}
+
+	if (dflag) {
+		while (1) {
+			for (i = 0; i < pagesize; i += sizeof(int))
+				total += *(int *)(buf + i);
 		}
 	}
 
