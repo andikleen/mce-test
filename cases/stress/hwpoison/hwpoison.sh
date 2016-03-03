@@ -741,6 +741,7 @@ run_fsck()
 	echo -n "" > $result
 
 	[ $g_fstype = "btrfs" ] && fsck="btrfsck"
+	[ $g_fstype = "xfs" ] && fsck="xfs_repair"
 	[ $g_fstype = "reiserfs" ] && {
 	        fsck="reiserfsck"
 	        opts="-y"
