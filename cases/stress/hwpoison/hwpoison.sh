@@ -746,6 +746,7 @@ run_fsck()
 	        fsck="reiserfsck"
 	        opts="-y"
 	}
+	[[ $g_fstype =~ ext[2-4] ]] && opts="-p"
 	begin "launch $fsck on $g_dev to check test result"
 	silent_exec which $fsck || {
 		fsck_err "fsck: unsupported fstype: $g_fstype"
