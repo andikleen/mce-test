@@ -69,13 +69,15 @@ rmmod $EDAC_TYPE >/dev/null 2>&1
 
 [ -e $ROOT/bin/victim ] || invalid "file victim doesn't exist!" \
 "maybe you forget to execute make install under directory $ROOT before test"
+killall victim > /dev/null 2>&1
 touch trigger
-tail -f trigger | victim $1 > log &
+tail -f trigger --pid=$$ | victim $1 > log &
+sleep 1
 addr=`cat log |cut -d' '  -f6|head -1`
 apei_inj $addr
 sleep 1
 echo go > trigger
-sleep 2
+sleep 5
 rm -f trigger log
 id=`pgrep victim`
 if [ X"$id" != X ]; then
