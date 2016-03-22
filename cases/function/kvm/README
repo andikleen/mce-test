@@ -42,12 +42,10 @@ KVM RAS Test Suite has following dependencies on kernel and other tools:
   source (2.6.32+, $KERNEL_SRC/Documentation/vm/page-types.c or
   3.3+ $KERNEL_SRC/tools/vm/page-types.c).
 
-* simple_process:
-  A process constantly access the allocated memeory.
-  Located under mce-test/tools/simple_process/.
-
 * victim
-  Play a role like *simple_process* but more powerful.
+  Play a role as "victim" in error injection but has more powerful function,
+  such as virtual address translated into physical address.
+  Located under mce-test/tools/victim/.
 
 * qemu-img:
   QEMU disk image utility.
@@ -106,7 +104,7 @@ Host virtual address is 7fbfe9ea7
 Host physical address is 0x8092a7000
 calling mce-inject /root/mce-test/cases/function/kvm/host/mce_inject_data
 Guest physical klog address is 0x6e0a7
-localhost.localdomain login: MCE 0x6e0a7: Killing simple_process:3230 due to hardware memory corruption
+localhost.localdomain login: MCE 0x6e0a7: Killing victim:2273 due to hardware memory corruption
 MCE 0x6e0a7: recovery action for dirty LRU page: Recovered
 PASS: Inject error into guest!
 PASS: Guest System alive!
@@ -125,7 +123,7 @@ MCE 0x806324: dirty LRU page recovery: Recovered
 GUEST system dmesg:
 ...
 [Hardware Error]: Machine check events logged
-MCE 0x75925: Killing simple_process:2273 early due to hardware memory corruption
+MCE 0x75925: Killing victim:2273 early due to hardware memory corruption
 MCE 0x75925: dirty LRU page recovery : Recovered
 ...
 

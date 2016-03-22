@@ -144,9 +144,7 @@ do
 	esac
 done
 
-#script_simple=guest_run_simple.sh
 script_victim=guest_run_victim.sh
-#guest_script_simple=$GUEST_DIR/$script_simple
 guest_script_victim=$GUEST_DIR/$script_victim
 guest_tmp=$GUEST_DIR/guest_tmp
 guest_page=$GUEST_DIR/guest_page
