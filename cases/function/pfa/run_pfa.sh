@@ -1,6 +1,10 @@
 #!/bin/bash
 
-. ../../../lib/mce.sh
+export ROOT=`(cd ../../../; pwd)`
+
+. $ROOT/lib/functions.sh
+setup_path
+. $ROOT/lib/mce.sh
 
 INJ_TYPE=0x00000008
 APEI_IF=""
@@ -33,13 +37,6 @@ usage()
 
 main()
 {
-	if [ X"$1" = X -o X"$2" = X ]
-	then
-		usage
-		exit 0
-	fi
-
-	PFA_BIN=$1
 	check_debugfs
 
 	APEI_IF=`cat /proc/mounts | grep debugfs | cut -d ' ' -f2 | head -1`/apei/einj
@@ -70,19 +67,25 @@ main()
 	fi
 	rmmod $EDAC_TYPE >/dev/null 2>&1
 
-	killall $PFA_BIN > /dev/null 2>&1
-	$PFA_BIN | tee log &
+	#mcelog must be run in daemon mode.
+	cat /dev/null > /var/log/mcelog
+	kill -9 `pidof mcelog` >/dev/null 2>&1
+	sleep 1
+	mcelog --ignorenodev --daemon
+
+	killall victim &> /dev/null
+	victim -p | tee log &
 	#wait to flush stdout into log
 	sleep 1
-	addr=`cat log |cut -d' '  -f8|tail -1`
+	addr=`cat log | awk '{print $NF}' | tail -1`
 	last_addr=$addr
 	start=`date +%s`
 	while :
 	do
 		echo inject address = $addr
 		apei_inj $addr
-		sleep $2
-		addr=`cat log |cut -d' '  -f8|tail -1`
+		sleep 2
+		addr=`cat log | awk '{print $NF}' | tail -1`
 		end=`date +%s`
 		timeout=`expr $end - $start`
 		if [ X"$last_addr" != X"$addr" ]
@@ -97,9 +100,10 @@ main()
 
 cleanup()
 {
-	rm -f trigger log
+	rm -f log
+	killall victim &> /dev/null
 	modprobe $EDAC_TYPE >/dev/null 2>&1
 }
 
 trap "cleanup" 0
-main "$@"
+main

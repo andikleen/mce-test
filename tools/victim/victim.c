@@ -32,7 +32,7 @@
  * Bits 0-54  page frame number (PFN) if present
  * Bits 0-4   swap type if swapped
  * Bits 5-54  swap offset if swapped
- * Bits 55-60 page shift (page size = 1<<page shift)
+ * Bits 55-60 page shift, the bits definition is legacy.
  * Bit  61    reserved for future use
  * Bit  62    page swapped
  * Bit  63    page present
@@ -40,7 +40,7 @@
 
 struct pagemaps {
 	unsigned long long	pfn:55;
-	unsigned long long	pgshift:6;
+	unsigned long long	pgshift:6; /*legacy*/
 	unsigned long long	rsvd:1;
 	unsigned long long	swapped:1;
 	unsigned long long	present:1;
@@ -97,6 +97,7 @@ static void usage(void)
 "	-d|--data			Inject data error(DCU error) under user context\n"
 "	-i|--instruction		Inject instruction error(IFU error) under user context\n"
 "	-k|--kick 0/1			Kick off trigger. Auto(0), Manual(1, by default)\n"
+"	-p|--pfa			help to test memory PFA(Predictive Failure Analysis) function\n"
 "	-h|--help			Show this usage message\n"
 	);
 }
@@ -107,18 +108,48 @@ static const struct option opts[] = {
 	{ "instruction"	, 0, NULL, 'i' },
 	{ "help"	, 0, NULL, 'h' },
 	{ "kick"	, 1, NULL, 'k' },
+	{ "pfa"		, 0, NULL, 'p' },
 	{ NULL		, 0, NULL, 0 }
 };
 
-int main(int argc, char **argv)
+static void pfa_helper(char *p, pid_t pid, unsigned long long old_phys)
 {
-	unsigned long long virt, phys;
-	long total;
-	char *buf;
-	int c, i;
-	int iflag = 0, dflag = 0;
-	int kick = 1;
-	pid_t pid;
+	int i;
+	int total;
+	unsigned long long new_phys;
+
+	for (;;) {
+		for (i = 0; i < pagesize; i += sizeof(int)) {
+			total += *(int*)(p + i);
+			*(int*)(p + i) = total;
+		}
+
+		new_phys = vtop((unsigned long long)p, pid);
+		if (old_phys == new_phys) {
+			for (i = 0; i < pagesize; i += sizeof(int)) {
+				total += *(int*)(p + i);
+				*(int*)(p + i) = i;
+			}
+			sleep(2);
+			new_phys = vtop((unsigned long long)p, pid);
+			if (old_phys != new_phys) {
+				printf("Page was replaced. New physical address = 0x%llx\n", new_phys);
+				fflush(stdout);
+				old_phys = new_phys;
+			}
+		} else {
+			printf("Page was replaced. New physical address = 0x%llx\n", new_phys);
+			fflush(stdout);
+			old_phys = new_phys;
+		}
+	}
+}
+
+static int parse_addr_subopts(char *subopts, unsigned long long *virt,
+			      pid_t *pid)
+{
+	int err = 0;
+	int index;
 	enum {
 		I_VADDR = 0,
 		I_PID
@@ -128,12 +159,72 @@ int main(int argc, char **argv)
 		[I_PID] = "pid",
 		NULL
 	};
-	char *subopts;
+	char *p = subopts;
 	char *subval;
 	char *svaddr;
 	char *spid;
-	int err;
-	int index;
+
+	while (*p != '\0' && !err) {
+		index = getsubopt(&p, token, &subval);
+		switch (index) {
+		case I_VADDR:
+			if (subval != NULL) {
+				svaddr = subval;
+				break;
+			} else {
+				fprintf(stderr,
+					"miss value for %s\n",
+					token[I_VADDR]);
+				err++;
+				continue;
+			}
+		case I_PID:
+			if (subval != NULL) {
+				spid = subval;
+				break;
+			} else {
+				fprintf(stderr,
+					"miss value for %s\n",
+					token[I_PID]);
+				err++;
+				continue;
+			}
+		default:
+			err++;
+			break;
+		}
+	}
+	if (err > 0) {
+		usage();
+		return 1;
+	}
+	errno = 0;
+	*virt = strtoull(svaddr, NULL, 0);
+	if ((*virt == 0 && svaddr[0] != '0') || errno != 0) {
+		fprintf(stderr, "Invalid virtual address: %s\n",
+			svaddr);
+		return 1;
+	}
+	errno = 0;
+	*pid = strtoul(spid, NULL, 0);
+	if ((*pid == 0 && spid[0] != '0') || errno != 0) {
+		fprintf(stderr, "Invalid process pid number: %s\n",
+			spid);
+		return 1;
+	}
+	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	unsigned long long virt, phys;
+	long total;
+	char *buf;
+	int c, i;
+	int iflag = 0, dflag = 0;
+	int kick = 1;
+	int pfa = 0;
+	pid_t pid;
 	const char *trigger = "./trigger_start";
 	const char *trigger_flag = "trigger";
 	int fd;
@@ -149,63 +240,16 @@ int main(int argc, char **argv)
 
 	pagesize = getpagesize();
 
-	while ((c = getopt_long(argc, argv, "a:dihk:", opts, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "a:dihk:p", opts, NULL)) != -1) {
 		switch (c) {
 		case 'a':
-			err = 0;
-			subopts = optarg;
-			while (*subopts != '\0' && !err) {
-				index = getsubopt(&subopts, token, &subval);
-				switch (index) {
-				case I_VADDR:
-					if (subval != NULL) {
-						svaddr = subval;
-						break;
-					} else {
-						fprintf(stderr,
-							"miss value for %s\n",
-							token[I_VADDR]);
-						err++;
-						continue;
-					}
-				case I_PID:
-					if (subval != NULL) {
-						spid = subval;
-						break;
-					} else {
-						fprintf(stderr,
-							"miss value for %s\n",
-							token[I_PID]);
-						err++;
-						continue;
-					}
-				default:
-					err++;
-					break;
-				}
-			}
-			if (err > 0) {
-				usage();
+			if (parse_addr_subopts(optarg, &virt, &pid) == 0) {
+				phys = vtop(virt, pid);
+				printf("physical address of (%d,0x%llx) = 0x%llx\n",
+					pid, virt, phys);
 				return 0;
 			}
-			errno = 0;
-			virt = strtoull(svaddr, NULL, 0);
-			if ((virt == 0 && svaddr[0] != '0') || errno != 0) {
-				fprintf(stderr, "Invalid virtual address: %s\n",
-					svaddr);
-				return 1;
-			}
-			errno = 0;
-			pid = strtoul(spid, NULL, 0);
-			if ((pid == 0 && spid[0] != '0') || errno != 0) {
-				fprintf(stderr, "Invalid process pid number: %s\n",
-					spid);
-				return 1;
-			}
-			phys = vtop(virt, pid);
-			printf("physical address of (%d,0x%llx) = 0x%llx\n",
-				pid, virt, phys);
-			return 0;
+			return 1;
 		case 'd':
 			dflag = 1;
 			break;
@@ -223,6 +267,9 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Invalid parameter: %s\n", optarg);
 				return 1;
 			}
+			break;
+		case 'p':
+			pfa = 1;
 			break;
 		case 'h':
 		default:
@@ -256,6 +303,10 @@ int main(int argc, char **argv)
 	printf("physical address of (0x%llx) = 0x%llx\n",
 		(unsigned long long)buf, phys);
 	fflush(stdout);
+
+	if (pfa == 1)
+		pfa_helper(buf, pid, phys);
+
 	if (kick == 0) {
 		errno = 0;
 		if (unlink(trigger) < 0 && errno != ENOENT) {
@@ -286,6 +337,7 @@ int main(int argc, char **argv)
 		now = time(NULL);
 		printf("Access time at %s\n", ctime(&now));
 	}
+
 	if (iflag) {
 		void (*f)(void) = (void (*)(void))buf;
 

@@ -27,9 +27,8 @@ export TMP_DIR
 echo 0 > $TMP_DIR/error.$$
 
 pushd `dirname $0` > /dev/null
-./run_pfa.sh ./pfa 8
+./run_pfa.sh
 [ $? -eq 0 ] || echo 1 > $TMP_DIR/error.$$
-killall ./pfa
 popd > /dev/null
 
 grep -q "1" $TMP_DIR/error.$$
