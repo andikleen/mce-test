@@ -38,9 +38,9 @@ check_result()
 	uname -a >> $LOG
 	cat /etc/issue >> $LOG
 	echo -e "\n<<< dmesg is as below >>>\n" >> $LOG
-	dmesg -c >> $LOG 2>&1
 	while [ $time -lt $timeout ]
 	do
+		dmesg -c >> $LOG 2>&1
 		grep -q "$eMCA_REC" $LOG
 		if [ $? -eq 0 ]
 		then
@@ -85,17 +85,19 @@ main()
 	[ $? -ne 0 ] && return 1
 	sleep 2
 	echo $type > $APEI_IF/error_type
-	killall simple_process &> /dev/null
-	simple_process > /dev/null &
-	page-types -p `pidof simple_process` -LN -b ano > $TMP_DIR/pagelist.$$
 
-	ADDR=`awk '$2 != "offset" {print "0x"$2"000"}' $TMP_DIR/pagelist.$$ | sed -n -e '1p'`
+	killall victim &> /dev/null
+	touch trigger
+	tail -f trigger --pid=$$ | victim -d > $TMP_DIR/pagelist.$$ &
+	sleep 1
+	ADDR=`cat $TMP_DIR/pagelist.$$ | awk '{print $NF}' | head -n 1`
 	if [ -f $APEI_IF/param1 ]
 	then
 		echo $ADDR > $APEI_IF/param1
 		echo 0xfffffffffffff000 > $APEI_IF/param2
 		echo 1 > $APEI_IF/notrigger
 	else
+		killall victim &> /dev/null
 		clean_up_eMCA
 		die "$APEI_IF/param'1-2' are missed! Ensure your BIOS supporting it and enabled."
 	fi
@@ -108,15 +110,22 @@ main()
 		$LOG
 
 		EOF
+		killall victim &> /dev/null
 		clean_up_eMCA
+		echo 1 > $TMP_DIR/emca.$$
+		echo -e "\nTest FAILED\n"
 		return 1
 	fi
-
 	sleep 1
+	echo go > trigger
+	sleep 3
+
 	check_result
 	grep -q "0" $TMP_DIR/emca.$$
 	ret=$?
 	clean_up_eMCA
+	killall victim &> /dev/null
+	rm -f trigger
 	if [ $ret -ne 0 ]
 	then
 		echo -e "\nTest FAILED\n"

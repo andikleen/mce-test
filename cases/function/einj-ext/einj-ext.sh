@@ -70,13 +70,12 @@ check_result()
 	uname -a >> $LOG
 	cat /etc/issue >> $LOG
 	echo -e "\ndmesg information as follows:\n" >> $LOG
-	dmesg -c >> $LOG 2>&1
-	echo -e "\nmcelog information as follows:\n" >> $LOG
-	mcelog >> $LOG 2>&1
 	while [ $time -lt $timeout ]
 	do
+		dmesg -c >> $LOG 2>&1
 		grep -q "$GHES_REC" $LOG
 		[ $? -eq 0 ] && return 0
+		sleep $sleep
 		time=`expr $time + $sleep`
 	done
 	return 1
@@ -91,19 +90,22 @@ einj_inj()
 	local type=0x8
 	check_err_type $type
 	[ $? -ne 0 ] && return 1
-	mcelog &> /dev/null
 	echo $type > $APEI_IF/error_type
-	killall simple_process > /dev/null 2>&1
-	#killall simple_process &> /dev/null
-	simple_process > /dev/null &
 
-	page-types -p `pidof simple_process` -LN -b ano > $TMP_DIR/pagelist.$$
-
-	ADDR=`awk '$2 != "offset" {print "0x"$2"000"}' $TMP_DIR/pagelist.$$ | sed -n -e '1p'`
+	killall victim &> /dev/null
+	touch trigger
+	tail -f trigger --pid=$$ | victim -d > $TMP_DIR/pagelist.$$ &
+	sleep 1
+	ADDR=`cat $TMP_DIR/pagelist.$$ | awk '{print $NF}' | head -n 1`
 	if [ -f $APEI_IF/param1 ]
 	then
 		echo $ADDR > $APEI_IF/param1
 		echo 0xfffffffffffff000 > $APEI_IF/param2
+		echo 1 > $APEI_IF/notrigger
+	else
+		killall victim &> /dev/null
+		rm -f trigger
+		die "$APEI_IF/param'1-2' are missed! Ensure your BIOS supporting it and enabled."
 	fi
 
 	echo "1" > $APEI_IF/error_inject
@@ -119,20 +121,27 @@ einj_inj()
 		***************************************************************************
 
 		EOF
-	} && echo 1 > $TMP_DIR/error.$$
+		killall victim &> /dev/null
+		rm -f trigger
+		echo 1 > $TMP_DIR/error.$$
+		echo -e "\nTest FAILED\n"
+		exit 1
+	}
 	sleep 1
+	echo go > trigger
+	sleep 3
 
 	check_result
 	if [ $? -eq 0 ]
 	then
 		echo -e "\nEINJ Injection: GHES record is OK" |tee -a $LOG
 		echo 0 >> $TMP_DIR/error.$$
-		return
 	else
 		echo -e "\nEINJ Injection: GHES record is not expected" |tee -a $LOG
 		echo 1 > $TMP_DIR/error.$$
-		return 1
 	fi
+	killall victim &> /dev/null
+	rm -f trigger
 }
 
 vendor_inj()
