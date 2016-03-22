@@ -36,7 +36,10 @@ unmount_hugetlbfs
 
 echo "------------------------------------------------------------------------"
 echo "Running tprctl (hard offline test with various prctl settings)"
+val=`sysctl -n vm.memory_failure_early_kill`
+sysctl -w vm.memory_failure_early_kill=0
 run_test ./tprctl success
+sysctl -w vm.memory_failure_early_kill=$val
 
 free_resources
 
