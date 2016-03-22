@@ -231,8 +231,12 @@ int main(int argc, char **argv)
 		}
 	}
 
+	/* The MAP_LOCKED flag should not be used here, because it will cause a failure
+	 * in KVM mce-inject test. But to prevent the mapped buffer from being swapped out,
+	 * the system under test should not run in a heavy load environment.
+	 */
 	buf = mmap(NULL, pagesize, PROT_READ|PROT_WRITE|PROT_EXEC,
-		MAP_ANONYMOUS|MAP_PRIVATE|MAP_LOCKED, -1, 0);
+		MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
 
 	if (buf == MAP_FAILED) {
 		fprintf(stderr, "Can't get a single page of memory!\n");

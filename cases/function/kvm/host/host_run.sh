@@ -144,9 +144,9 @@ do
 	esac
 done
 
-script_simple=guest_run_simple.sh
+#script_simple=guest_run_simple.sh
 script_victim=guest_run_victim.sh
-guest_script_simple=$GUEST_DIR/$script_simple
+#guest_script_simple=$GUEST_DIR/$script_simple
 guest_script_victim=$GUEST_DIR/$script_victim
 guest_tmp=$GUEST_DIR/guest_tmp
 guest_page=$GUEST_DIR/guest_page
@@ -217,14 +217,11 @@ check_env()
 	[ ! -e $host_key_priv ] && complain "host privite key does not exist!"
 	chmod 600 $host_key_pub
 	chmod 600 $host_key_priv
+	[ -e $ROOT/bin/victim ] || complain "file victim does not exist!" \
+	"maybe you forget to run make install under directory $ROOT before test"
 	if [ "$test_type" == "real" ]; then
-		[ -e $ROOT/bin/victim ] || complain "file victim does not exist!" \
-		"maybe you forget to run make install under directory $ROOT before test"
 		check_einj
 		rm_edac
-	elif [ "$test_type" == "spoof" ]; then
-		[ -e $ROOT/bin/page-types ] || complain "file page-types does not exist!"\
-		"maybe you forget to run make install under directory $ROOT before test"
 	fi
 }
 
@@ -354,26 +351,14 @@ image_prepare()
 	    chmod 700 $mnt/root/.ssh
 	fi
 	mkdir -p $mnt/$GUEST_DIR
-	if [ "$test_type" == "real" ]; then
-		rm -f $mnt/$GUEST_DIR/$trigger_file
-		cp -f ../guest/$script_victim $mnt/$GUEST_DIR
-		cp -rf $ROOT/tools/victim $mnt/$GUEST_DIR
-	elif [ "$test_type" == "spoof" ]; then
-		cp -f ../guest/$script_simple $mnt/$GUEST_DIR
-		cp -rf $ROOT/tools/simple_process $mnt/$GUEST_DIR
-		cp -rf $ROOT/tools/page-types $mnt/$GUEST_DIR
-	fi
+	rm -f $mnt/$GUEST_DIR/$trigger_file
+	cp -f ../guest/$script_victim $mnt/$GUEST_DIR
+	cp -rf $ROOT/tools/victim $mnt/$GUEST_DIR
 	cat $host_key_pub >> $mnt/root/.ssh/authorized_keys
 	kvm_ras=/etc/init.d/kvm_ras
-	if [ "$test_type" == "real" ]; then
-		sed -i -e "s#GUEST_DIR#$GUEST_DIR#g" $mnt/$guest_script_victim
-		sed -e "s#EARLYKILL#$early_kill#g" \
-		-e "s#GUESTRUN#$guest_script_victim#g" $guest_init > $mnt/$kvm_ras
-	elif [ "$test_type" == "spoof" ]; then
-		sed -i -e "s#GUEST_DIR#$GUEST_DIR#g" $mnt/$guest_script_simple
-		sed -e "s#EARLYKILL#$early_kill#g" \
-		-e "s#GUESTRUN#$guest_script_simple#g" $guest_init > $mnt/$kvm_ras
-	fi
+	sed -i -e "s#GUEST_DIR#$GUEST_DIR#g" $mnt/$guest_script_victim
+	sed -e "s#EARLYKILL#$early_kill#g" \
+	-e "s#GUESTRUN#$guest_script_victim#g" $guest_init > $mnt/$kvm_ras
 	chmod a+x $mnt/$kvm_ras
 	ln -s $kvm_ras $mnt/etc/rc${i}.d/S99kvm_ras
 	sleep 2
@@ -447,25 +432,13 @@ addr_translate()
 	echo x-gpa2hva $GUEST_PHY > $monitor_console
 	cat $monitor_console > $monitor_console_output &
 	sleep 5
-	if [ "$test_type" == "real" ]; then
-		HOST_VIRT=`awk '/x-gpa2hva|qemu|QEMU/{next} {print $NF}' $monitor_console_output`
-	elif [ "$test_type" == "spoof" ]; then
-		HOST_VIRT=`awk '/x-gpa2hva|qemu|QEMU/{next} {print $NF}' $monitor_console_output |cut -b 3-11`
-	fi
+	HOST_VIRT=`awk '/x-gpa2hva|qemu|QEMU/{next} {print $NF}' $monitor_console_output`
 	echo "Host virtual address is $HOST_VIRT"
 
 	#Get Host physical address
-	if [ "$test_type" == "real" ]; then
-		victim -a vaddr=$HOST_VIRT,pid=$QEMU_PID > $host_tmp
-	elif [ "$test_type" == "spoof" ]; then
-		page-types -p $QEMU_PID -LN | grep $HOST_VIRT > $host_tmp
-	fi
+	victim -a vaddr=$HOST_VIRT,pid=$QEMU_PID > $host_tmp
 	sleep 5
-	if [ "$test_type" == "real" ]; then
-		ADDR=`cat $host_tmp | awk '{print $NF}'`
-	elif [ "$test_type" == "spoof" ]; then
-		ADDR=`cat $host_tmp | awk '{print "0x"$2"000"}' `
-	fi
+	ADDR=`cat $host_tmp | awk '{print $NF}'`
 	echo "Host physical address is $ADDR"
 }
 
@@ -486,6 +459,11 @@ error_inj()
 		echo "ADDR $ADDR" >> $mce_inject_data
 		echo "calling mce-inject $mce_inject_data"
 		mce-inject $mce_inject_data
+		sleep 1
+		touch $HOST_DIR/$trigger_file
+		echo "trigger" > $HOST_DIR/$trigger_file
+		scp -o StrictHostKeyChecking=no -i $host_key_priv -P 5555 $HOST_DIR/$trigger_file \
+			127.0.0.1:$GUEST_DIR > /dev/null 2>&1
 	fi
 
 }
@@ -561,9 +539,8 @@ else
     fi
 fi
 
-rm -f guest_tmp $host_start $monitor_console_output $serial_console_output $host_tmp $pid_file
-if [ "$test_type" == "real" ]; then
-	rm -f $HOST_DIR/$trigger_file
-elif [ "$test_type" == "spoof" ]; then
+rm -f guest_tmp $host_start $monitor_console_output $serial_console_output $host_tmp \
+    $pid_file $HOST_DIR/$trigger_file
+if [ "$test_type" == "spoof" ]; then
 	rm -f $mce_inject_data
 fi
