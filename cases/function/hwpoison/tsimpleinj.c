@@ -66,14 +66,14 @@ int tempfd(void)
 	static int tmpcount;
 	int fd;
 	char buf[30];
-	snprintf(buf,30,"/tmp/test%d.XXXXXXXX",tmpcount++);
+	snprintf(buf,30,"./test%d.XXXXXXXX",tmpcount++);
 	fd = mkstemp(buf);
 	if (fd >= 0)
 		unlink(buf);
 	return fd;
 }
 
-#define RANDOM_FILE "/etc/profile"
+#define RANDOM_FILE "./Makefile"
 
 int main(void)
 {
