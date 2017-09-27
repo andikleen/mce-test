@@ -188,11 +188,11 @@ int main(void)
 	disk_backed("disk backed mlock", MAP_LOCKED);
 	check(&count, "disk backed mlock", 1);
 	shm_hugepage("shm hugepage", 0);
-	check(&count, "shm hugepage", HPS / PS);
+	check(&count, "shm hugepage", 1);
 	anonymous_hugepage("anonymous hugepage", 0);
-	check(&count, "anonymous hugepage", HPS / PS);
+	check(&count, "anonymous hugepage", 1);
 	filebacked_hugepage("file backed hugepage", 0);
-	check(&count, "file backed hugepage", HPS / PS);
+	check(&count, "file backed hugepage", 1);
 	// add more test cases here
 
 	return exitcode;
