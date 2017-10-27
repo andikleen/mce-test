@@ -264,6 +264,12 @@ main()
 {
 	per_cpu_test
 	group_cpu_test
-	s3_s4_test
+	case "$MCE_TEST_SKIP" in
+	*s3_s4*)
+		;;
+	*)
+		s3_s4_test
+		;;
+	esac
 }
 main
