@@ -73,7 +73,12 @@ and test again. Exiting..."
 		exit 1
 	fi
 
-	screen ./bsp-test.sh
+	#screen command will terminate if stdin is not terminal.
+	if [ -t 0 ]; then
+		screen ./bsp-test.sh
+	else
+		./bsp-test.sh
+	fi
 
 	NUM_FAIL_CPU=`grep "CPU" $FAILST |wc -l`
 	NUM_PASS_CPU=`expr $NUM_CPU - $NUM_FAIL_CPU`
