@@ -5,6 +5,7 @@ ERST-INJ cases/function/erst-inject/runtest.sh on
 eMCA cases/function/emca-inj/runtest.sh off
 #PFA test depends on correct BIOS/mcelog setting
 PFA cases/function/pfa/runtest.sh on
+EDAC cases/function/edac/runtest.sh off
 #SRAR test highly depends on BIOS implementation
 SRAR-DCU cases/function/core_recovery/runtest_dcu.sh off
 SRAR-IFU cases/function/core_recovery/runtest_ifu.sh off
