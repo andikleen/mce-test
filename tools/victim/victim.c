@@ -112,10 +112,11 @@ static const struct option opts[] = {
 	{ NULL		, 0, NULL, 0 }
 };
 
+int total;
+
 static void pfa_helper(char *p, pid_t pid, unsigned long long old_phys)
 {
 	int i;
-	int total;
 	unsigned long long new_phys;
 
 	for (;;) {
