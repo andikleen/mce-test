@@ -68,7 +68,7 @@ check_result()
 
 	echo -e "Current OS/kernel version as follows:\n" >> $LOG
 	uname -a >> $LOG
-	cat /etc/issue >> $LOG
+	cat /etc/os-release >> $LOG
 	echo -e "\ndmesg information as follows:\n" >> $LOG
 	while [ $time -lt $timeout ]
 	do

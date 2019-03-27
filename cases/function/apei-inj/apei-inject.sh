@@ -36,7 +36,7 @@ check_result()
 
 	echo -e "<<< OS/kernel version is as follows >>>\n" >> $LOG
 	uname -a >> $LOG
-	cat /etc/issue >> $LOG
+	cat /etc/os-release >> $LOG
 	echo -e "\n<<< dmesg information is as follows >>>\n" >> $LOG
 	while [ $time -lt $timeout ]
 	do
