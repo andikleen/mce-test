@@ -79,6 +79,9 @@ rm_edac()
 	else
 		cat /proc/modules | grep -q sb_edac
 		[ $? -eq 0 ] && EDAC_TYPE="sb_edac"
+	elif
+		cat /proc/modules | grep -q skx_edac
+		[ $? -eq 0 ] && EDAC_TYPE="skx_edac"
 	fi
 	rmmod $EDAC_TYPE >/dev/null 2>&1
 }
