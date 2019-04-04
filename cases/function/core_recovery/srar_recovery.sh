@@ -58,15 +58,12 @@ fi
 # remove possible EDAC module, otherwise, the error information will be ate
 # by EDAC module and mcelog will not get it.
 # By now, only i7core_edac and sb_edac hook into the mcelog kernel buffer
-cat /proc/modules | grep -q i7core_edac
-if [ $? -eq 0 ]; then
+if cat /proc/modules | grep -q i7core_edac; then
 	EDAC_TYPE="i7core_edac"
-else
-	cat /proc/modules | grep -q sb_edac
-	[ $? -eq 0 ] && EDAC_TYPE="sb_edac"
-elif
-	cat /proc/modules | grep -q skx_edac
-	[ $? -eq 0 ] && EDAC_TYPE="skx_edac"
+elif cat /proc/modules | grep -q sb_edac; then
+	EDAC_TYPE="sb_edac"
+elif cat /proc/modules | grep -q skx_edac; then
+	EDAC_TYPE="skx_edac"
 fi
 rmmod $EDAC_TYPE >/dev/null 2>&1
 
