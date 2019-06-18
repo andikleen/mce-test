@@ -215,10 +215,19 @@ static int parse_addr_subopts(char *subopts, unsigned long long *virt,
 	return 0;
 }
 
+/*
+ * The "SRAR DCU" test case failed on a CLX-AP server. It's root caused
+ * that the gcc v8.2.1 optimized out the access to the injected location.
+ *
+ * If keep "total" as a local, even mark it "volatile", the gcc v8.2.1
+ * still optimizes out the memory access. Therefore, move the "total" from
+ * being a local variable to a global to avoid such optimization.
+ */
+long total;
+
 int main(int argc, char **argv)
 {
 	unsigned long long virt, phys;
-	long total;
 	char *buf;
 	int c, i;
 	int iflag = 0, dflag = 0;
