@@ -109,6 +109,18 @@ enum rmode {
 	MNOTHING = -1,
 };
 
+enum test_case {
+	SHARED_MEM,
+	ANON_CLEAN,
+	ANON_DIRTY,
+	ANON_DIRTY_UNMAP,
+	ANON_DIRTY_MLOCKED,
+	FILE_CLEAN,
+	FILE_CLEAN_MLOCKED,
+	FILE_DIRTY,
+	FILE_DIRTY_MLOCKED,
+};
+
 static struct option opts[] = {
 	{"clean", 0, 0, 'C'},
 	{"help", 0, 0, 'h'},
@@ -231,7 +243,7 @@ static void sighandler(int sig, siginfo_t * si, void *arg)
 		siglongjmp(early_recover_ctx, 1);
 }
 
-static void poison(char *msg, char *page, enum rmode mode)
+static void poison(char *msg, char *page, enum rmode mode, enum test_case tc)
 {
 	expected_addr = page;
 	recovercount = 5;
@@ -241,6 +253,48 @@ static void poison(char *msg, char *page, enum rmode mode)
 			if (errno == EINVAL) {
 				result("failed: Kernel doesn't support poison injection\n");
 				exit(0);
+			} else if (errno == EBUSY && tc == ANON_CLEAN) {
+				/*
+				 * Currently, kernel can correctly handle/recover a user-space error
+				 * page, e.g., set "PG_hwpoison" flag, de-attach the error page from
+				 * the address mapping, and kill the related processes if it's a
+				 * dirty page. While for some kernel error page, kernel can only set
+				 * "PG_hwpoison" flag, and return "-EBUSY" error code for system
+				 * request (try to be lucky and not touch the kernel error page in
+				 * future). The table below shows the error code mapping from kernel
+				 * error code to system call error code of madvise() when handling
+				 * an error page.
+				 *
+				 * +--------------------------------------------+
+				 * | Kernel error code | System call error code |
+				 * |-------------------|------------------------|
+				 * | MF_IGNORE[1]      |       EBUSY            |
+				 * |-------------------|------------------------|
+				 * | MF_FAILED[2]      |       EBUSY            |
+				 * |-------------------|------------------------|
+				 * | MF_DELAYED[2]     |       0 (SUCCESS)      |
+				 * |-------------------|------------------------|
+				 * | MF_RECOVERED[2]   |       0 (SUCCESS)      |
+				 * |--------------------------------------------|
+				 * | [1] For reserved/slab kernel error pages.  |
+				 * | [2] For other error pages.                 |
+				 * +--------------------------------------------+
+				 *
+				 * There isn't an existing system error code more suitable than
+				 * "EBUSY" to map "MF_IGNORE". And from the above table, the "EBUSY"
+				 * system call error code could indicate that kernel ignores a
+				 * reserved kernel error page (expected failure) or fails to handle
+				 * an error page (real failure).
+				 *
+				 * The page for "clean-anonymous" sub-test from system call
+				 * "mmap(..., MAP_PRIVATE|MAP_ANONYMOUS,...)" is a reserved kernel
+				 * zeroed page with copy-on-write mapping which kernel can't recover.
+				 * So the "EBUSY" error code for this sub-test indicates an expected
+				 * failure when doing hardware poison test.
+				 */
+				mylog("Kernel can't recover a reserved kernel zeroed page for "
+					   "the anonymous clean test case(expected failure)\n");
+				return;
 			}
 			err("error: madvise: %s", strerror(errno));
 			return;
@@ -300,10 +354,10 @@ static void recover(char *msg, char *page, enum rmode mode)
 		mylog("pass: recovered\n");
 }
 
-static void testmem(char *msg, char *page, enum rmode mode)
+static void testmem(char *msg, char *page, enum rmode mode, enum test_case tc)
 {
 	mylog("%s poisoning page %p\n", msg, page);
-	poison(msg, page, mode);
+	poison(msg, page, mode, tc);
 	recover(msg, page, mode);
 }
 
@@ -362,7 +416,7 @@ static void dirty_anonymous(void)
 	ipc->test[instance].id = testid;
 	page = checked_mmap(NULL, PS, PROT_READ | PROT_WRITE,
 			    MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE, 0, 0);
-	testmem("dirty", page, MWRITE);
+	testmem("dirty", page, MWRITE, ANON_DIRTY);
 	if (!failure)
 		ipc->test[instance].result = TEST_PASS;
 	shmdt(ipc);
@@ -378,7 +432,7 @@ static void dirty_anonymous_unmap(void)
 	ipc->test[instance].id = testid;
 	page = checked_mmap(NULL, PS, PROT_READ | PROT_WRITE,
 			    MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE, 0, 0);
-	testmem("dirty", page, MWRITE);
+	testmem("dirty", page, MWRITE, ANON_DIRTY_UNMAP);
 	munmap_reserve(page, PS);
 	if (!failure)
 		ipc->test[instance].result = TEST_PASS;
@@ -395,7 +449,7 @@ static void mlocked_anonymous(void)
 	ipc->test[instance].id = testid;
 	page = checked_mmap(NULL, PS, PROT_READ | PROT_WRITE,
 			    MAP_PRIVATE | MAP_ANONYMOUS | MAP_LOCKED, 0, 0);
-	testmem("mlocked", page, MWRITE);
+	testmem("mlocked", page, MWRITE, ANON_DIRTY_MLOCKED);
 	if (!failure)
 		ipc->test[instance].result = TEST_PASS;
 	shmdt(ipc);
@@ -414,10 +468,10 @@ static void do_file_clean(int flags, char *name)
 			    fd, 0);
 	fsync(fd);
 	close(fd);
-	testmem(name, page, MREAD_OK);
+	testmem(name, page, MREAD_OK, FILE_CLEAN);
 	/* reread page from disk */
 	mylog("reading %x\n", *(unsigned char *)page);
-	testmem(name, page, MWRITE_OK);
+	testmem(name, page, MWRITE_OK, FILE_CLEAN);
 }
 
 static void file_clean(void)
@@ -462,7 +516,7 @@ static void do_file_dirty(int flags, char *name)
 
 	page = checked_mmap(NULL, PS, PROT_READ,
 			    MAP_SHARED | MAP_POPULATE | flags, fd, 0);
-	testmem(ndesc(nbuf, name, "initial"), page, MREAD);
+	testmem(ndesc(nbuf, name, "initial"), page, MREAD, FILE_DIRTY);
 	expecterr("msync expect error", msync(page, PS, MS_SYNC) < 0);
 	close(fd);
 	munmap_reserve(page, PS);
@@ -563,7 +617,7 @@ static void clean_anonymous(void)
 	char *page;
 	page = checked_mmap(NULL, PS, PROT_READ | PROT_WRITE,
 			    MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
-	testmem("clean", page, MWRITE_OK);
+	testmem("clean", page, MWRITE_OK, ANON_CLEAN);
 }
 
 static void anon_clean(void)
@@ -621,11 +675,10 @@ static void shm_test(void)
 	request_sem(semid_ready, 0);
 	if (!ipc->shm.done) {
 		ipc->shm.done = 1;
-		testmem("shm dirty", (char *)shmptr, MWRITE);
+		testmem("shm dirty", (char *)shmptr, MWRITE, SHARED_MEM);
 	} else
 		recover("shm dirty", (char *)shmptr, MREAD);
 	release_sem(semid_ready, 0);
-
 	if (!failure)
 		ipc->test[instance].result = TEST_PASS;
 	shmdt(shmptr);
