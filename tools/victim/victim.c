@@ -323,7 +323,7 @@ int main(int argc, char **argv)
 			return 1;
 		}
 		memset(trigger_buf, 0, sizeof(trigger_buf));
-		while (count--) {
+		while (--count) {
 			if ((fd = open(trigger, O_RDONLY)) < 0) {
 				sleep(1);
 				continue;
